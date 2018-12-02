@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ebe7ff7ed44ad2194ac2c2c563e5480a4369057ea8601b727972e74d10b262f7
+-- hash: f5a5052c6ceda6cfff497d3ebe244a829869652405adda79e93afa7b5db6944b
 
 name:           aoc2018
 version:        0.1.0.0
@@ -40,6 +40,19 @@ executable day01
       Paths_aoc2018
   hs-source-dirs:
       src/day01
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      aoc2018
+    , base >=4.7 && <5
+    , containers
+  default-language: Haskell2010
+
+executable day02
+  main-is: Main.hs
+  other-modules:
+      Paths_aoc2018
+  hs-source-dirs:
+      src/day02
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aoc2018
