@@ -1,0 +1,30 @@
+name:                aoc2018
+version:             0.1.0.0
+github:              "jw1200/aoc2018"
+license:             BSD3
+author:              "Joe Watson"
+maintainer:          "joe_watson@mail.com"
+copyright:           "2018 Joe Watson"
+
+extra-source-files:
+- README.md
+
+description:         Please see the README on GitHub at <https://github.com/githubuser/aoc2018#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- containers
+
+library:
+  source-dirs: src
+
+executables:
+  day01:
+    main:                Main.hs
+    source-dirs:         src/day01
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - aoc2018

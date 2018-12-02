@@ -1,0 +1,2 @@
+day 01 part a: 582
+day 01 part b: 488
