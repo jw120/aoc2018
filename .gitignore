@@ -1,4 +1,5 @@
 .stack-work/
 old/
+output/
 *.cabal
 *~

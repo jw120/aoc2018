@@ -3,6 +3,7 @@
 module Main where
 
 import qualified Data.Set as Set
+import Data.Set (Set)
 
 -- | Read an integer from a string ignoring a leading '+'
 --
@@ -12,14 +13,14 @@ readPlusMinus :: String -> Int
 readPlusMinus ('+' : rest) = read rest
 readPlusMinus s = read s
 
--- | Return first repeated value in a (potentially infinite) list of Ints
+-- | Return first repeated value in a (potentially infinite) list
 --
 -- >>> firstRepeat [1, 2, 3, 4, 2, 4, 5]
 -- 2
-firstRepeat :: [Int] -> Int
+firstRepeat :: Ord x => [x] -> x
 firstRepeat = firstRepeat' Set.empty
   where
-    firstRepeat' :: Set.Set Int -> [Int] -> Int
+    firstRepeat' :: Ord y => Set y -> [y] -> y
     firstRepeat' visited (x : xs)
       | x `Set.member` visited = x
       | otherwise = firstRepeat' (x `Set.insert` visited ) xs
