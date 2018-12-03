@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main where
+module Day01 where
 
 import qualified Data.Set as Set
 import Data.Set (Set)
@@ -8,7 +8,7 @@ import Data.Set (Set)
 -- | Read an integer from a string ignoring a leading '+'
 --
 -- >>> map readPlusMinus ["+23", "23", "-23"]
--- [23, 23, -23]
+-- [23,23,-23]
 readPlusMinus :: String -> Int
 readPlusMinus ('+' : rest) = read rest
 readPlusMinus s = read s

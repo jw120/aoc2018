@@ -4,9 +4,8 @@ Programming exercises from adventofcode.com
 
 ## TODO
 
-* Add rest of problem statements
-* Get doctest and doctest discover to work
+## Tips to build
 
-## Tip
-
-run stack build intero to get VS Code haskero to work
+stack build intero
+stack install doctest
+stack install doctest-discover

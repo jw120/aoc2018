@@ -1,12 +1,12 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Main where
+module Day02 where
 
 import Data.List (foldl')
 import qualified Data.Map as Map
 import Data.Map (Map)
 
--- Part a solution. Product of number of ids with a 2-count character and the number
+-- Part (a) solution. Product of number of ids with a 2-count character and the number
 -- with a 3-count character
 checkSum :: [String] -> Int
 checkSum ids = count2 * count3
@@ -18,7 +18,7 @@ checkSum ids = count2 * count3
 -- | Does the list contain a doubly-repeated and/or a triply-repeated element
 --
 -- >>> hasReps "aabbcccc"
--- (True, False)
+-- (True,False)
 hasReps :: Ord k => [k] -> (Bool, Bool)
 hasReps s = (2 `elem` counts, 3 `elem` counts)
   where counts = Map.elems $ buildCountMap s
@@ -26,10 +26,14 @@ hasReps s = (2 `elem` counts, 3 `elem` counts)
 -- | Build a map of the counts of each element of the list
 --
 -- >>> Map.toList $ buildCountMap "abbccdedd"
--- [('a', 1), ('b', 2), ('c', 2), ('d', 3), ('e', 1)]
+-- [('a',1),('b',2),('c',2),('d',3),('e',1)]
 buildCountMap :: Ord k => [k] -> Map k Int
 buildCountMap = foldl' addCount Map.empty
     where addCount m x = Map.insertWith (+) x 1 m
+
+
+-- Part (b) solution
+
 
 main :: IO ()
 main = do

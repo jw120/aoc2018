@@ -5,35 +5,30 @@ license:             BSD3
 author:              "Joe Watson"
 maintainer:          "joe_watson@mail.com"
 copyright:           "2018 Joe Watson"
+description:         Please see the README on GitHub at <https://github.com/githubuser/aoc2018#readme>
+
+source-dirs: src
 
 extra-source-files:
 - README.md
-
-description:         Please see the README on GitHub at <https://github.com/githubuser/aoc2018#readme>
 
 dependencies:
 - base >= 4.7 && < 5
 - containers
 
-library:
-  source-dirs: src
-
 executables:
   day01:
-    main:                Main.hs
-    source-dirs:         src/day01
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - aoc2018
+    main: day01.hs
+    ghc-options: -main-is Day01
   day02:
-    main:                Main.hs
-    source-dirs:         src/day02
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
+    main: day02.hs
+    ghc-options: -main-is Day02
+
+
+tests:
+  doctests:
+    source-dirs:        test
+    main:               doctest-driver.hs
     dependencies:
-    - aoc2018
+      - doctest
+      - doctest-discover
