@@ -1,1 +1,2 @@
 day 02 part a: 8892
+day 02 part b: zihwtxagifpbsnwleydukjmqv
