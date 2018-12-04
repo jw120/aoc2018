@@ -26,6 +26,9 @@ executables:
   day03:
     main: day03.hs
     ghc-options: -main-is Day03
+    dependencies:
+      - attoparsec
+      - bytestring
 
 tests:
   doctests:
