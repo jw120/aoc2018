@@ -12,9 +12,13 @@ source-dirs: src
 extra-source-files:
 - README.md
 
+# We include all dependencies here so stack will find them when editting
 dependencies:
 - base >= 4.7 && < 5
 - containers
+- array
+- attoparsec
+- bytestring
 
 executables:
   day01:
@@ -26,9 +30,6 @@ executables:
   day03:
     main: day03.hs
     ghc-options: -main-is Day03
-    dependencies:
-      - attoparsec
-      - bytestring
 
 tests:
   doctests:
