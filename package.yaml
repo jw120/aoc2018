@@ -30,11 +30,12 @@ executables:
   day03:
     main: day03.hs
     ghc-options: -main-is Day03
+  day04:
+    main: day04.hs
+    ghc-options: -main-is Day04
 
 tests:
-  doctests:
+  doctest:
     source-dirs:        test
-    main:               doctest-driver.hs
-    dependencies:
-      - doctest
-      - doctest-discover
+    main:               doctest.hs
+    dependencies:       doctest

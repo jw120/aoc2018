@@ -25,7 +25,7 @@ data Claim = Claim {
 -- | Parse a Claim from a string
 --
 -- >>> parseClaim $ BC.pack "#1 @ 1,3: 4x4"
--- Claim {id = 1, x = 1, y = 3, w = 4, h = 4}
+-- Claim {idCode = 1, x = 1, y = 3, w = 4, h = 4}
 parseClaim :: ByteString -> Claim
 parseClaim s = case (parseOnly claimParser s) of
   Left msg -> error msg

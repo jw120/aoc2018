@@ -23,4 +23,3 @@ To set up
 
 stack build intero
 stack install doctest
-stack install doctest-discover
