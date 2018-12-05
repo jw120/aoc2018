@@ -1,17 +1,21 @@
 module Day03 where
 
-import Data.Array (Array, listArray, (!), (//))
+import Data.Array.Unboxed (UArray, listArray, (!), (//))
 import Data.Attoparsec.ByteString.Char8 (parseOnly, Parser, char, decimal, skipSpace, endOfLine, maybeResult)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.ByteString (ByteString)
 import Data.Foldable (foldl')
 
+
+-- Size of the fabric
 fabricSize :: Int
 fabricSize = 1000
 
+type Fabric = UArray (Int, Int) Int
+
 data Claim = Claim {
-  id :: Int,
+  idCode :: Int, -- avoid name 'id' as clashes with preulde
   x :: Int, -- distance from left edge
   y :: Int, -- distance from top edge
   w :: Int, -- width
@@ -43,21 +47,32 @@ parseClaim s = case (parseOnly claimParser s) of
       h <- decimal
       return $ Claim id x y w h
 
--- Main function for part (a) - number of overlapping squares within the claims
-overlaps :: [Claim] -> Int
-overlaps claims = foldl' countOverlap 0 fullFabric
+-- Main function for part (a) - number of overlapping squares on the fabric
+overlaps :: Fabric -> Int
+overlaps f = sum [isOverlap (f ! (i, j)) | i <- [0 .. fabricSize - 1], j <- [0 .. fabricSize - 1]]
   where
-    emptyFabric = listArray ((0, 0), (fabricSize - 1, fabricSize - 1)) (repeat 0)
-    fullFabric = foldl' addClaim emptyFabric claims
-    addClaim :: Array (Int, Int) Int -> Claim -> Array (Int, Int) Int
-    addClaim a (Claim _ x y w h) =
-      a // [((i, j), a ! (i, j) + 1) | i <- [x .. x + w - 1], j <- [y .. y + h - 1]]
-    countOverlap :: Int -> Int -> Int
-    countOverlap acc x = acc + if x > 1 then 1 else 0
+    isOverlap :: Int -> Int
+    isOverlap x = if x > 1 then 1 else 0
+
+emptyFabric :: Fabric
+emptyFabric = listArray ((0, 0), (fabricSize - 1, fabricSize - 1)) (repeat 0)
+
+addClaim :: Fabric -> Claim -> Fabric
+addClaim a (Claim _ x y w h) =
+  a // [((i, j), a ! (i, j) + 1) | i <- [x .. x + w - 1], j <- [y .. y + h - 1]]
+
+-- Main function for part (b) - return the claim that has no overlappes
+findUnoverlapped :: Fabric -> [Claim]  -> Int
+findUnoverlapped fabric  = idCode . head . filter isUnoverlapped
+  where
+    isUnoverlapped :: Claim -> Bool
+    isUnoverlapped (Claim _ x y w h) = all (== 1) $ patch
+      where patch = [fabric ! (i, j) | i <- [x .. x + w - 1], j <- [y .. y + h - 1]]
 
 main :: IO ()
 main = do
   input <- B.readFile "input/day03.txt"
   let claims = map parseClaim $ BC.lines input
-  putStrLn $ "day 03 part a: " ++ show (overlaps claims)
-  putStrLn $ "day 03 part b: NYI"
+  let fabric = foldl' addClaim emptyFabric claims
+  putStrLn $ "day 03 part a: " ++ show (overlaps fabric)
+  putStrLn $ "day 03 part b: " ++ show (findUnoverlapped fabric claims)

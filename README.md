@@ -6,9 +6,8 @@ Programming exercises from adventofcode.com
 
 ## Notes
 
-Time taken for day03a
-
-Using Data.Array 60s
+day03a took more than a minute with standard boxed arrays. Using unbox (but still immutable) arrays,
+reduced to a few seconds.
 
 ## Tips to build
 
