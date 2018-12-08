@@ -10,6 +10,7 @@ import Data.ByteString (ByteString)
 import Data.List (foldl', sortBy)
 import qualified Data.Map as M
 import Data.Map (Map)
+import Data.Maybe (fromJust) -- horrible hack
 
 type Guard = Int
 type Timestamp = Int -- in range 0..59
@@ -132,20 +133,26 @@ toGuardTotals = foldl' f (M.empty)
       f :: Map Guard Timestamp -> (Guard, Timestamp, Timestamp) -> Map Guard Timestamp
       f m (g, t1, t2) = M.insertWith (+) g (t2 - t1) m
 
--- Main function for part (a)
-sleepiestGuard :: [[DayAction]] -> Int
-sleepiestGuard = undefined
-
--- Return the key of the map with the highest value (or the first such key if more than one)
-keyOfMaxValue :: Map Guard Timestamp -> Guard
-keyOfMaxValue = fst . M.foldlWithKey' f (-999, 0)
+ -- Return the key of the map with the highest value (or the first such key if more than one)
+keyOfMaxValue :: (Ord k, Ord v) => Map k v -> k
+keyOfMaxValue = fst . fromJust . M.foldlWithKey' f Nothing
   where
-    f (maxG, maxT) g t
-      | t > maxT = (g, t)
-      | otherwise = (maxG, maxT)
+    f :: Ord v => Maybe (k, v) -> k -> v -> Maybe (k, v)
+    f (Just (maxG, maxT)) g t
+      | t > maxT = Just (g, t)
+      | otherwise = Just (maxG, maxT)
+    f Nothing g t = Just (g, t)
 
 maxMinute :: [(Timestamp, Timestamp)] -> Timestamp
-maxMinute = undefined
+maxMinute = keyOfMaxValue . countMinutes where
+countMinutes :: [(Timestamp, Timestamp)] -> Map Timestamp Int
+countMinutes = foldl' addInterval zeroCounts
+addInterval :: Map Timestamp Int -> (Timestamp, Timestamp) -> Map Timestamp Int
+addInterval m (t1, t2) = foldl' addMinute m [t | t <- [t1 .. t2 - 1]]
+addMinute :: Map Timestamp Int -> Timestamp -> Map Timestamp Int
+addMinute m t = M.adjust (1 +) t m
+zeroCounts :: Map Timestamp Int
+zeroCounts = M.fromList [(m, 0) | m <- [0 .. 59]]
 
 answer :: ByteString -> IO String
 answer input = do
@@ -183,7 +190,7 @@ answer input = do
 
 main :: IO ()
 main = do
-  input <- B.readFile "input/day04_test.txt"
+  input <- B.readFile "input/day04.txt"
   a <- answer input
   putStrLn $ "day 04 part a: " ++ a
   putStrLn $ "day 04 part b: NYI"
