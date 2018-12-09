@@ -4,7 +4,9 @@ Programming exercises from adventofcode.com
 
 ## TODO
 
-Tidy day 4 and validate
+Tidy day 4
+Speed up day 5
+validate
 
 ## Notes
 
@@ -19,7 +21,6 @@ To compile: stack build
 To compile and run: stack run day01
 To run: stack exec day01
 To run doctests: stack test
-
 
 To set up
 

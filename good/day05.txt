@@ -1,0 +1,2 @@
+day 05 part a: 10584
+day 05 part b: 6968
