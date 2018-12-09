@@ -13,7 +13,7 @@ import Data.Function (on)
 import Data.List (foldl', maximumBy, minimumBy, nub)
 import qualified Data.Map as M
 import Data.Map (Map)
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 
 data Point = Point { x :: Int, y :: Int } deriving (Show, Eq, Ord, Ix)
 
@@ -22,7 +22,7 @@ data Point = Point { x :: Int, y :: Int } deriving (Show, Eq, Ord, Ix)
 -- >>> readPoint $ BC.pack "1, 6"
 -- Point {x = 1, y = 6}
 readPoint :: ByteString -> Point
-readPoint = (either error id) . AC.parseOnly point
+readPoint = either error id . AC.parseOnly point
   where
     point :: AC.Parser Point
     point = do
@@ -54,9 +54,9 @@ largestArea :: [Point] -> Int
 largestArea points = maxArea
   where
     closestArray :: Array Point (Maybe Point) = closest points
-    edgePointNearest :: [Point] = nub . catMaybes . map (closestArray A.!) $ edgePoints points
+    edgePointNearest :: [Point] = nub . mapMaybe (closestArray A.!) $ edgePoints points
     allPointsAndCounts :: [(Point, Int)] = M.toList . counts $ closest points
-    interiorPointsAndCounts :: [(Point, Int)] = filter ((\p -> p `notElem` edgePointNearest) . fst) allPointsAndCounts
+    interiorPointsAndCounts :: [(Point, Int)] = filter ((`notElem` edgePointNearest) . fst) allPointsAndCounts
     (maxPoint, maxArea) = maximumBy (compare `on` snd) interiorPointsAndCounts
 
 closest:: [Point] -> Array Point (Maybe Point)
@@ -89,7 +89,7 @@ edgePoints points =
   [Point x yMax | x <- [xMin..xMax]] ++
   [Point xMax y | y <- [yMin..yMax]] ++
   [Point x yMin | x <- [xMin..xMax]]
-    where ((Point xMin yMin), (Point xMax yMax)) = boundingBox points
+    where (Point xMin yMin, Point xMax yMax) = boundingBox points
 
 -- | Manhattan distance between two points
 --
@@ -113,9 +113,19 @@ closestPoint p points
     (closestPoint, closestDistance) = minimumBy (compare `on` snd) pointsAndDistances
     pointsAndDistances = map (\q -> (q, distance p q)) points
 
+pointsWithTotalDistWithin :: Int -> [Point] -> Int
+pointsWithTotalDistWithin maxDist points = length $ filter (\p -> totalDist p <= maxDist) allFeasiblePoints
+    where
+      totalDist :: Point -> Int
+      totalDist p = sum $ map (distance p) points
+      (Point xMin yMin, Point xMax yMax) = boundingBox points
+      d :: Int = 10000 `div` length points -- a heuristic on how far out we need to go
+      allFeasiblePoints :: [Point]
+      allFeasiblePoints = [Point x y | x <- [-xMin - d .. xMax + d], y <- [-yMin - d  .. yMax + d]]
+
 main :: IO ()
 main = do
   input <- B.readFile "input/day06.txt"
   let points = map readPoint $ BC.lines input
   putStrLn $ "day 06 part a: " ++ show (largestArea points)
-  putStrLn $ "day 06 part b: " ++ "NYI"
+  putStrLn $ "day 06 part b: " ++ show (pointsWithTotalDistWithin 10000 points)
