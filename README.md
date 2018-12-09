@@ -4,9 +4,6 @@ Programming exercises from adventofcode.com
 
 ## TODO
 
-Tidy day 4
-validate
-
 ## Notes
 
 day03a took more than a minute with standard boxed arrays. Using unbox (but still immutable) arrays,
@@ -20,6 +17,7 @@ To compile: stack build
 To compile and run: stack run day01
 To run: stack exec day01
 To run doctests: stack test
+To run with debug info (e.g., for day04): stack run day04 -- -d
 
 To set up
 

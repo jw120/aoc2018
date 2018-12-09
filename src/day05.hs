@@ -19,7 +19,7 @@ reactive x y = toLower x == toLower y && isLower x == not (isLower y)
 react :: String -> String
 react = foldr f []
   where
-    f :: Char -> [Char] -> [Char]
+    f :: Char -> String -> String
     f c [] = [c]
     f c (x : xs)
       | reactive c x = xs

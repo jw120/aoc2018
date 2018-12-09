@@ -36,7 +36,7 @@ buildCountMap = foldl' addCount Map.empty
 pairWithOneDiff :: [String] -> String
 pairWithOneDiff ids = commonElements
     where
-      commonElements = map (\(a, _) -> a) . filter (\(a, b) -> a == b) $ zip id1 id2
+      commonElements = map fst . filter (uncurry (==)) $ zip id1 id2
       (True, id1, id2) = head $ filter (\(d, _, _) -> d) labelledPairs
       labelledPairs = map (\(id1, id2) -> (hasOneDiff id1 id2, id1, id2)) pairs
       pairs = allPairs ids

@@ -27,7 +27,7 @@ data Claim = Claim {
 -- >>> parseClaim $ BC.pack "#1 @ 1,3: 4x4"
 -- Claim {idCode = 1, x = 1, y = 3, w = 4, h = 4}
 parseClaim :: ByteString -> Claim
-parseClaim s = case (parseOnly claimParser s) of
+parseClaim s = case parseOnly claimParser s of
   Left msg -> error msg
   Right claim -> claim
   where
@@ -66,7 +66,7 @@ findUnoverlapped :: Fabric -> [Claim]  -> Int
 findUnoverlapped fabric  = idCode . head . filter isUnoverlapped
   where
     isUnoverlapped :: Claim -> Bool
-    isUnoverlapped (Claim _ x y w h) = all (== 1) $ patch
+    isUnoverlapped (Claim _ x y w h) = all (== 1) patch
       where patch = [fabric ! (i, j) | i <- [x .. x + w - 1], j <- [y .. y + h - 1]]
 
 main :: IO ()
