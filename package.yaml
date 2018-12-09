@@ -19,6 +19,7 @@ dependencies:
 - array
 - attoparsec
 - bytestring
+- doctest
 
 executables:
   day01:
@@ -41,4 +42,3 @@ tests:
   doctest:
     source-dirs:        test
     main:               doctest.hs
-    dependencies:       doctest

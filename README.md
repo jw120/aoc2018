@@ -5,7 +5,6 @@ Programming exercises from adventofcode.com
 ## TODO
 
 Tidy day 4
-Speed up day 5
 validate
 
 ## Notes
