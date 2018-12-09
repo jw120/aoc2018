@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings, ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings, ScopedTypeVariables, TupleSections #-}
 
 module Day07 where
 
@@ -52,17 +52,50 @@ toPrereqMap :: [(Char, Char)] -> Map Char String
 toPrereqMap rules = foldl' addRule allEmpty rules
   where
     addRule :: Map Char String -> (Char, Char) -> Map Char String
-    addRule m (prereq, step) = M.insertWith (addSorted) step [prereq] m
+    addRule m (prereq, step) = M.insertWith addSorted step [prereq] m
     addSorted :: String -> String -> String
     addSorted s1 s2 = sort (s1 ++ s2)
     allSteps :: String
     allSteps = nub (map fst rules ++ map snd rules)
     allEmpty :: Map Char String
-    allEmpty = M.fromList $ map (\c -> (c, "")) allSteps
+    allEmpty = M.fromList $ map (, "") allSteps
+
+-- | What is the next step to be performed for given preqmap and already completed steps
+--
+-- >>> nextStep (toPrereqMap testRules) ""
+-- Just 'C'
+-- >>> nextStep (toPrereqMap testRules) "C"
+-- Just 'A'
+-- >>> nextStep (toPrereqMap testRules) "CA"
+-- Just 'B'
+-- >>> nextStep (toPrereqMap testRules) "ABCDEF"
+-- Nothing
+nextStep :: Map Char String -> String -> Maybe Char
+nextStep prereqs done = case available of
+  (c : _) -> Just c
+  [] -> Nothing
+  where
+    incompleteSteps :: String = filter (`notElem` done) $ M.keys prereqs
+    available :: String = filter prereqsDone incompleteSteps
+    prereqsDone :: Char -> Bool
+    prereqsDone step = all (`elem` done) $ prereqs M.! step
+
+-- | What step should be performed for given preqmap
+--
+-- >>> allSteps testRules
+-- "CABDFE"
+allSteps :: [(Char, Char)] -> String
+allSteps rules = allSteps' ""
+  where
+    prereqMap :: Map Char String = toPrereqMap rules
+    allSteps' :: String -> String
+    allSteps' done = case nextStep prereqMap done of
+      Just c -> allSteps' (done  ++ [c])
+      Nothing -> done
 
 main :: IO ()
 main = do
   input <- B.readFile "input/day07.txt"
   let rules = map readRule $ BC.lines input
-  putStrLn $ "day 06 part a: " ++ "NYI"
-  putStrLn $ "day 06 part b: " ++ "NYI"
+  putStrLn $ "day 07 part a: " ++ allSteps rules
+  putStrLn $ "day 07 part b: " ++ "NYI"
