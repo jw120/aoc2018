@@ -56,13 +56,13 @@ cmpObs (ObsRecord m1 d1 a1) (ObsRecord m2 d2 a2) =
 -- | Parse an observation record
 --
 -- >>> parseObs $ BC.pack "[1518-11-01 00:00] Guard #10 begins shift"
--- ObsRecord 11 1 (ObsInPeriodGuardChange 10 0)
+-- ObsRecord (Month 11) (Day 1) (ObsInPeriodGuardChange (Guard 10) (Minute 0))
 -- >>> parseObs $ BC.pack "[1518-11-01 00:25] wakes up"
--- ObsRecord 11 1 (ObsWake 25)
+-- ObsRecord (Month 11) (Day 1) (ObsWake (Minute 25))
 -- >>> parseObs $ BC.pack "[1518-11-01 00:30] falls asleep"
--- ObsRecord 11 1 (ObsSleep 30)
+-- ObsRecord (Month 11) (Day 1) (ObsSleep (Minute 30))
 -- >>> parseObs $ BC.pack "[1518-12-07 23:58] Guard #99 begins shift"
--- ObsRecord 12 7 (ObsEndDayGuardChange 99)
+-- ObsRecord (Month 12) (Day 7) (ObsEndDayGuardChange (Guard 99))
 parseObs :: ByteString -> ObsRecord
 parseObs s = case A.parseOnly obsParser s of
   Left msg -> error msg

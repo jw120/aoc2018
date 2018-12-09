@@ -1,0 +1,2 @@
+day 06 part a: 4342
+day 06 part b: NYI

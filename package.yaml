@@ -37,6 +37,9 @@ executables:
   day05:
     main: day05.hs
     ghc-options: -main-is Day05
+  day06:
+    main: day06.hs
+    ghc-options: -main-is Day06
 
 tests:
   doctest:

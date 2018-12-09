@@ -6,4 +6,5 @@ main = doctest
   , "src/day03.hs"
   , "src/day04.hs"
   , "src/day05.hs"
+  , "src/day06.hs"
   ]
