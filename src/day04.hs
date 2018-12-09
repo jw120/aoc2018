@@ -7,7 +7,7 @@ import Data.Attoparsec.ByteString.Char8 (Parser)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.ByteString (ByteString)
-import Data.List (foldl', sortBy)
+import Data.List (foldl', nub, sortBy)
 import qualified Data.Map as M
 import Data.Map (Map)
 import Data.Maybe (fromJust) -- horrible hack
@@ -144,17 +144,32 @@ keyOfMaxValue = fst . fromJust . M.foldlWithKey' f Nothing
     f Nothing g t = Just (g, t)
 
 maxMinute :: [(Timestamp, Timestamp)] -> Timestamp
-maxMinute = keyOfMaxValue . countMinutes where
-countMinutes :: [(Timestamp, Timestamp)] -> Map Timestamp Int
-countMinutes = foldl' addInterval zeroCounts
-addInterval :: Map Timestamp Int -> (Timestamp, Timestamp) -> Map Timestamp Int
-addInterval m (t1, t2) = foldl' addMinute m [t | t <- [t1 .. t2 - 1]]
-addMinute :: Map Timestamp Int -> Timestamp -> Map Timestamp Int
-addMinute m t = M.adjust (1 +) t m
-zeroCounts :: Map Timestamp Int
-zeroCounts = M.fromList [(m, 0) | m <- [0 .. 59]]
+maxMinute = keyOfMaxValue . countMinutes
+  where
+    countMinutes :: [(Timestamp, Timestamp)] -> Map Timestamp Int
+    countMinutes = foldl' addInterval zeroCounts
+    addInterval :: Map Timestamp Int -> (Timestamp, Timestamp) -> Map Timestamp Int
+    addInterval m (t1, t2) = foldl' addMinute m [t | t <- [t1 .. t2 - 1]]
+    addMinute :: Map Timestamp Int -> Timestamp -> Map Timestamp Int
+    addMinute m t = M.adjust (1 +) t m
+    zeroCounts :: Map Timestamp Int
+    zeroCounts = M.fromList [(t, 0) | t <- [0 .. 59]]
 
-answer :: ByteString -> IO String
+maxPair :: [(Guard, Timestamp, Timestamp)] -> (Guard, Timestamp)
+maxPair triplets = keyOfMaxValue countMinutes
+  where
+    countMinutes :: Map (Guard, Timestamp) Int
+    countMinutes = foldl' addInterval zeroCounts triplets
+    addInterval :: Map (Guard, Timestamp) Int -> (Guard, Timestamp, Timestamp) -> Map (Guard, Timestamp) Int
+    addInterval m (g, t1, t2) = foldl' (addMinute g) m [t | t <- [t1 .. t2 - 1]]
+    addMinute :: Guard -> Map (Guard, Timestamp) Int -> Timestamp -> Map (Guard, Timestamp) Int
+    addMinute g m t = M.adjust (1 +) (g, t) m
+    zeroCounts :: Map (Guard, Timestamp) Int
+    zeroCounts = M.fromList [((g, m), 0) | g <- guards, m <- [0 .. 59]]
+    guards :: [Guard]
+    guards = nub $ map (\(g, _, _) -> g) triplets
+
+answer :: ByteString -> IO (String, String)
 answer input = do
   putStrLn "sbservations"
   putStrLn . unlines $ map show observations
@@ -174,7 +189,7 @@ answer input = do
   putStrLn . unlines $ map show sleepiestGuardIntervals
   putStrLn "sleepiestMinute"
   putStrLn $ show sleepiestMinute
-  return $ show (sleepiestGuard * sleepiestMinute)
+  return $ (show (sleepiestGuard * sleepiestMinute), show (sleepiestPairGuard * sleepiestPairMinute))
   where
     observations :: [ObsRecord] = map parseObs $ BC.lines input
     sortedObservations :: [ObsRecord] = sortBy cmpObs observations
@@ -187,11 +202,12 @@ answer input = do
       map (\(_, t1, t2) -> (t1, t2)) $
       filter (\(g, _, _) -> g == sleepiestGuard) sleepIntervals
     sleepiestMinute :: Timestamp = maxMinute sleepiestGuardIntervals
+    (sleepiestPairGuard, sleepiestPairMinute) :: (Guard, Timestamp)= maxPair sleepIntervals
 
 main :: IO ()
 main = do
   input <- B.readFile "input/day04.txt"
-  a <- answer input
+  (a, b) <- answer input
   putStrLn $ "day 04 part a: " ++ a
-  putStrLn $ "day 04 part b: NYI"
+  putStrLn $ "day 04 part b: " ++ b
 

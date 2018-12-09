@@ -1,2 +1,2 @@
 day 04 part a: 95199
-NYI
+day 04 part b: 7887
