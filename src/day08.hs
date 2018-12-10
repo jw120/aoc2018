@@ -34,10 +34,24 @@ rep n p xs
 sumMetadata :: Node -> Int
 sumMetadata (Node cs ms)= sum ms + sum (map sumMetadata cs)
 
+-- | Part b answer - value of a node
+--
+-- >>> value . fst $ node testData
+-- 66
+value :: Node -> Int
+value (Node [] ms) = sum ms
+value (Node cs ms) = sum $ map refer ms
+  where
+    childValues = map value cs
+    refer :: Int -> Int
+    refer c
+      | c >= 1 && c <= length cs = childValues !! (c - 1)
+      | otherwise = 0
+
 main :: IO ()
 main = do
   input <- readFile "input/day08.txt"
   let (inputNode, rest) = node . map read $ words input
   unless (null rest) (print ("Parse failed with leftovers: " ++ show rest))
   putStrLn $ "day 08 part a: " ++ show (sumMetadata inputNode)
-  putStrLn $ "day 08 part b: " ++ "NYI"
+  putStrLn $ "day 08 part b: " ++ show (value inputNode)

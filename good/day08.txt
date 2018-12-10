@@ -1,2 +1,2 @@
 day 08 part a: 48443
-day 08 part b: NYI
+day 08 part b: 30063
