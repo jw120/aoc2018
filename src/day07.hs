@@ -2,16 +2,14 @@
 
 module Day07 where
 
-import Data.Attoparsec.ByteString.Char8 as AC
+import qualified Data.Attoparsec.ByteString.Char8 as AC
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as BC
 import Data.ByteString (ByteString)
---import Data.Either (either)
---aimport Data.Function (on)
+import qualified Data.Char as C
 import Data.List (foldl', nub, sort)
 import qualified Data.Map as M
 import Data.Map (Map)
---import Data.Maybe (mapMaybe)
 
 -- | Read a rule
 --
@@ -93,9 +91,59 @@ allSteps rules = allSteps' ""
       Just c -> allSteps' (done  ++ [c])
       Nothing -> done
 
+data ParallelState
+  = Working [(Char, Int)] Int String
+  | Finished
+  deriving Show
+
+-- | Advance one tick of parallel working
+--
+-- >>> parallelStep 2 0 (toPrereqMap testRules) (Working [] 0 "")
+-- Working [('C',3)] 1 ""
+-- >>> parallelStep 2 0 (toPrereqMap testRules) (Working [('C',3)] 1 "")
+-- Working [('C',3)] 2 ""
+-- >>> parallelStep 2 0 (toPrereqMap testRules) (Working [('C',3)] 2 "")
+-- Working [('C',3)] 3 ""
+-- >>> parallelStep 2 0 (toPrereqMap testRules) (Working [('C',3)] 3 "")
+-- Working [('A',4),('F',9)] 4 "C"
+parallelStep :: Int -> Int -> Map Char String -> ParallelState -> ParallelState
+parallelStep _ _ _ Finished = error "Already finished"
+parallelStep n baseTime prereqs (Working working tick done)
+  | null nowIncomplete = Finished
+  | otherwise = Working newWorking (tick + 1) nowDone
+  where
+    -- First finish the workers due to end this tick
+    nowDone :: String = (done ++) . map fst $ filter ((== tick). snd) working
+    nowIncomplete :: String = filter (`notElem` nowDone) $ M.keys prereqs
+    nowWorking :: [(Char, Int)] = filter ((> tick) . snd) working
+    -- Now start new workers
+    nowAvailable :: String = sort . filter prereqsDone $ filter notInProgress nowIncomplete
+    newStarts :: String = take (n - length nowWorking) nowAvailable
+    newWorking :: [(Char, Int)]= nowWorking ++ map (addFinishTick tick) newStarts
+    -- Helpers
+    prereqsDone :: Char -> Bool
+    prereqsDone step = all (`elem` nowDone) $ prereqs M.! step
+    addFinishTick :: Int -> Char -> (Char, Int)
+    addFinishTick t c = (c, C.ord(C.toLower c) - C.ord 'a' +  baseTime + 1 + t)
+    notInProgress :: Char -> Bool
+    notInProgress = (`notElem` map fst nowWorking)
+
+-- | Run rules in parallel to completion
+--
+-- >>> allParallelSteps testRules 2 0
+-- 15
+allParallelSteps :: [(Char, Char)] -> Int -> Int -> Int
+allParallelSteps rules n baseTime = go (Working [] 0 "")
+    where
+      prereqMap :: Map Char String = toPrereqMap rules
+      go :: ParallelState -> Int
+      go s@(Working _ tick _) = case parallelStep n baseTime prereqMap s of
+        s'@Working{} -> go s'
+        Finished -> tick
+
 main :: IO ()
 main = do
   input <- B.readFile "input/day07.txt"
   let rules = map readRule $ BC.lines input
   putStrLn $ "day 07 part a: " ++ allSteps rules
-  putStrLn $ "day 07 part b: " ++ "NYI"
+  putStrLn $ "day 07 part b: " ++ show (allParallelSteps rules 5 60)
