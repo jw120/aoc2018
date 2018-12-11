@@ -4,6 +4,8 @@ Programming exercises from adventofcode.com
 
 ## TODO
 
+Make 9a faster
+
 ## Notes
 
 day03a took more than a minute with standard boxed arrays. Using unbox (but still immutable) arrays,
