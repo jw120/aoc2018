@@ -1,0 +1,2 @@
+day 09 part a: 404611
+day 09 part b: 3350093681

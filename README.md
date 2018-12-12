@@ -4,7 +4,7 @@ Programming exercises from adventofcode.com
 
 ## TODO
 
-Make 9a faster
+Make 9 faster
 
 ## Notes
 
