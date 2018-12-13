@@ -10,4 +10,5 @@ main = doctest
   , "src/day07.hs"
   , "src/day08.hs"
   , "src/day09.hs"
+  , "src/day10.hs"
   ]

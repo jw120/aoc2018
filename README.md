@@ -5,6 +5,7 @@ Programming exercises from adventofcode.com
 ## TODO
 
 Make 9 faster
+Day 10 - work to find minimum and show time index
 
 ## Notes
 
