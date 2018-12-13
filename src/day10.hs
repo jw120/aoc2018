@@ -81,9 +81,8 @@ testData = map readPoint
 -- >>> (showPoints testData) !! 2
 -- ".........#.#..#......."
 showPoints :: [Point] -> [String]
-showPoints points = header : [showRow r | r <- [yMin..yMax]]
+showPoints points = [showRow r | r <- [yMin..yMax]]
   where
-    header = show xMin ++ ".." ++ show xMax ++ ", " ++ show yMin ++ ", " ++ show yMax
     positions :: [(Int, Int)] = map position points
     xMin = minimum $ map fst positions
     xMax = maximum $ map fst positions
@@ -95,12 +94,13 @@ showPoints points = header : [showRow r | r <- [yMin..yMax]]
 -- | Advance a point by its velocity
 --
 -- >>> advance Point { position = (3,9), velocity = (1, -2)}
--- Point {position=(4,-7), velocity=(1,-2)}
+-- Point {position = (4,7), velocity = (1,-2)}
 advance :: Point -> Point
 advance p = p { position = (x + vx, y + vy) }
   where (x, y) = position p
         (vx, vy) = velocity p
 
+-- | Area of the bounding box of a set of points
 area :: [Point] -> Int
 area points = (xMax - xMin) * (yMax - yMin)
   where
@@ -110,46 +110,24 @@ area points = (xMax - xMin) * (yMax - yMin)
     yMin = minimum $ map snd positions
     yMax = maximum $ map snd positions
 
-partA :: Int -> [Point] -> IO ()
-partA lastTick points = go 0 points
-  where
-    go :: Int -> [Point] -> IO ()
-    go i ps
-      | i == lastTick = printBoard
-      | otherwise = do
-          printBoard
-          go (i + 1) (map advance ps)
-      where
-        printBoard = do
-          putStrLn $ "After " ++ show i ++ " seconds"
-          putStr . unlines $ showPoints ps
-          putStrLn ""
-
-partA' :: [Point] -> IO ()
-partA' = go 0
-  where
-    go :: Int -> [Point] -> IO ()
-    go lastArea points
-      | lastArea == 0 || a < lastArea = go a (map advance points)
-      | otherwise = putStr . unlines $ showPoints points
-      where
-        a = area points
-
-partA'' :: [Point] -> IO ()
-partA'' points = mapM_ printBoard smallBoards
+run :: [Point] -> IO ()
+run points = putStr . unlines $ "Day 10 " : show minIndex : showPoints minBoard
   where
     allBoards :: [[Point]] = iterate (map advance) points
-    smallBoards :: [[Point]] = filter ((<= maxArea) . area) allBoards
-    maxArea =  (226 - 156 + 2) * (125 - 106 + 2)
-    printBoard :: [Point] -> IO ()
-    printBoard = putStr . unlines . showPoints
+    allBoards' :: [(Int, (Int, [Point]))] = zipWith (\b i -> (area b, (i, b))) allBoards [0..]
+    (minIndex, minBoard) :: (Int, [Point]) = firstLocalMin allBoards'
+
+-- | Find first local minimum of an indexed list
+--
+-- >>> firstLocalMin [(3, 'A'),(2, 'B'),(1, 'C'),(2, 'D'),(0, 'E')]
+-- 'C'
+firstLocalMin :: Ord x => [(x, y)] -> y
+firstLocalMin ((x1, y1) : (x2, y2) : (x3, y3) : rest)
+    | x1 > x2 && x2 < x3 = y2
+    | otherwise = firstLocalMin ((x2, y2) : (x3, y3) : rest)
+firstLocalMin _ = error "Cannot find local minimum"
 
 main :: IO ()
 main = do
   input <- B.readFile "input/day10.txt"
-  let points = map readPoint $ BC.lines input
-  putStrLn $ "day 10 part a: "
-  partA'' points
-  putStrLn $ "day 10 part b: " ++ "NYI"
-
-
+  run . map readPoint $ BC.lines input
