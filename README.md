@@ -5,7 +5,6 @@ Programming exercises from adventofcode.com
 ## TODO
 
 Make 9 faster
-Day 10 - factor out boundind box code to avoid hlint duplication warning
 
 ## Notes
 

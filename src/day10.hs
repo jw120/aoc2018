@@ -74,6 +74,14 @@ testData = map readPoint
   , "position=<-3,  6> velocity=< 2, -1>"
   ]
 
+boundingBox :: (Ord a, Ord b) => [(a, b)] -> ((a, b), (a, b))
+boundingBox xs = ((xMin, yMin), (xMax, yMax))
+  where
+    xMin = minimum $ map fst xs
+    xMax = maximum $ map fst xs
+    yMin = minimum $ map snd xs
+    yMax = maximum $ map snd xs
+
 -- | Convert points into a grid of #s and .s suitable for printing to console
 --
 -- >>> head $ showPoints testData
@@ -84,10 +92,7 @@ showPoints :: [Point] -> [String]
 showPoints points = [showRow r | r <- [yMin..yMax]]
   where
     positions :: [(Int, Int)] = map position points
-    xMin = minimum $ map fst positions
-    xMax = maximum $ map fst positions
-    yMin = minimum $ map snd positions
-    yMax = maximum $ map snd positions
+    ((xMin, yMin), (xMax, yMax)) = boundingBox positions
     showRow :: Int -> String
     showRow r = [if (i, r) `elem` positions then '#' else '.' | i <- [xMin .. xMax]]
 
@@ -105,10 +110,7 @@ area :: [Point] -> Int
 area points = (xMax - xMin) * (yMax - yMin)
   where
     positions :: [(Int, Int)] = map position points
-    xMin = minimum $ map fst positions
-    xMax = maximum $ map fst positions
-    yMin = minimum $ map snd positions
-    yMax = maximum $ map snd positions
+    ((xMin, yMin), (xMax, yMax)) = boundingBox positions
 
 run :: [Point] -> IO ()
 run points = putStr . unlines $ "Day 10 " : show minIndex : showPoints minBoard
