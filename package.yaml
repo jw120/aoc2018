@@ -55,6 +55,9 @@ executables:
   day11:
     main: day11.hs
     ghc-options: -main-is Day11
+  day12:
+    main: day12.hs
+    ghc-options: -main-is Day12
 
 tests:
   doctest:
