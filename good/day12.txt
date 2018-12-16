@@ -1,0 +1,2 @@
+day 12 part a: 4200
+day 12 part b: NYI
