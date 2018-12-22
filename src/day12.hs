@@ -9,7 +9,7 @@ import qualified Data.ByteString.Char8 as BC
 import Data.ByteString (ByteString)
 import Data.Functor (($>))
 
-newtype State = State [(Int, Bool)]
+newtype State = State [(Int, Bool)] deriving Eq
 data Rule = Rule Bool Bool Bool Bool Bool deriving Show
 data Chunk = Chunk Int Bool Bool Bool Bool Bool
 
@@ -126,6 +126,15 @@ run n rules s
 sumState :: State -> Int
 sumState (State s) = sum . map fst $ filter snd s
 
+-- | Iterate until a state's plants repeats (irrespective of numbering)
+--
+untilRepeat :: [Rule] -> State -> (State, Int, Int)
+untilRepeat rules s = go 1 s (apply rules s)
+  where
+    go i s1@(State x1) s2@(State x2)
+      | map snd x1 == map snd x2 = (s1, i, fst (head x2) - fst (head x1))
+      | otherwise = go (i + 1) s2 (apply rules s2)
+
 main :: IO ()
 main = do
   input <- B.readFile "input/day12.txt"
@@ -133,4 +142,5 @@ main = do
   let initialState = readInitial header
   let rules = map readRule . filter ((== '#') . BC.last) $ filter (not . BC.null) rest
   putStrLn $ "day 12 part a: " ++ show (sumState (run 20 rules initialState))
-  putStrLn $ "day 12 part b: " ++ "NYI"
+  let (rep, n, delta) = untilRepeat rules initialState
+  putStrLn $ "day 12 part b: " ++ show (sumState rep) ++ " " ++ show (n, delta)
