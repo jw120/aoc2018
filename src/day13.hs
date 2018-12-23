@@ -6,7 +6,10 @@ import Data.Array (Array)
 import qualified Data.Array as A
 import Data.Maybe (catMaybes)
 
+--
 -- Segments of the track
+--
+
 data Segment
   = Horizontal -- '-'
   | Vertical -- '|'
@@ -14,6 +17,7 @@ data Segment
   | RightUp-- '/'
   | Intersection -- '+'
   | Empty -- ' '
+  deriving Show
 
 toChar :: Segment -> Char
 toChar Horizontal = '-'
@@ -32,15 +36,30 @@ fromChar '+' = Intersection
 fromChar ' ' = Empty
 fromChar _ = error "Unknown segment char"
 
+--
 -- Track network, coordinates are (x, y) where x runs from 0 left to right, and y from 0 top to bottom
+--
+
 data Network = Network (Array (Int, Int) Segment)
 
 instance Show Network where
-  show (Network n) = unlines [ row y | y <- [0..ymax]]
+  show (Network n) = init $ unlines [ row y | y <- [0..ymax]]
     where
-      ((0, xmax), (0, ymax)) = A.bounds n
+      ((0, 0), (xmax, ymax)) = A.bounds n
       row :: Int -> String
       row j = [ toChar (n A.! (x, j)) | x <- [0..xmax]]
+
+--
+-- State for each cart
+--
+data Cart = Cart
+  { x :: Int
+  , y :: Int
+  , heading :: Direction
+  , next :: Choice
+}
+instance Show Cart where
+  show c = "(" ++ show (x c) ++ ", " ++ show (y c) ++ ") " ++ [head (show (heading c))] ++ show (next c)
 
 -- Cart's current direction
 data Direction = North | East | South | West deriving Show
@@ -52,7 +71,6 @@ move East (x, y) = (x + 1, y)
 move West (x, y) = (x + 1, y)
 
 -- Cart's choice at each intersection follows a sequence
-
 data Choice = TurnLeft | StraightAfterLeft | TurnRight | StraightAfterRight
 
 instance Show Choice where
@@ -66,21 +84,14 @@ iterateChoice StraightAfterLeft = TurnRight
 iterateChoice TurnRight = StraightAfterRight
 iterateChoice StraightAfterRight = TurnLeft
 
--- State for each cart
-data Cart = Cart
-  { x :: Int
-  , y :: Int
-  , heading :: Direction
-  , next :: Choice
-}
-instance Show Cart where
-  show c = "(" ++ show (x c) ++ ", " ++ show (y c) ++ ") " ++ [head (show (heading c))] ++ show (next c)
-
+--
 -- Overall state of system
+--
+
 data State = State
   { network :: Network
   , carts :: [Cart]
-  }
+  } deriving Show
 
 testNetworkStr :: [String]
 testNetworkStr =
@@ -102,15 +113,15 @@ testNetworkStr =
 -- | /-+--+-\  |
 -- | | |  | |  |
 -- \-+-/  \-+--/
---  \------/
+--   \------/
 readNetwork :: [String] -> State
 readNetwork xs = State
-  { network = Network $ A.array ((0, xmax), (0, ymax)) trackData
+  { network = Network $ A.array ((0, 0), (xmax, ymax)) trackData
   , carts = map mkCart cartData
   }
   where
-    xmax = (length xs) - 1
-    ymax = (length (head xs)) - 1
+    xmax = (length (head xs)) - 1
+    ymax = (length xs) - 1
     rowData :: [(Int, ([(Int, Segment)], [(Int, Direction)]))]
     rowData = zip [0..] $ map readRow xs
     trackData :: [((Int, Int), Segment)]
@@ -157,6 +168,10 @@ readRow s = (zip [0..] (map readTrack s), cartIndices s)
     readCart (i, '<') = Just (i, West)
     readCart (i, '^') = Just (i, North)
     readCart _ = Nothing
+
+-- Run system new state or coordinate of first collision
+tick :: State -> Either (Int, Int) State
+tick = undefined
 
 main :: IO ()
 main = do
