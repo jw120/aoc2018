@@ -6,6 +6,8 @@ import Data.Array (Array)
 import qualified Data.Array as A
 import Data.List (foldl', sortBy, tails)
 import Data.Maybe (catMaybes)
+import Control.Monad (when)
+import Control.Monad.Loops (iterateUntilM)
 
 --
 -- Segments of the track
@@ -41,7 +43,7 @@ fromChar _ = error "Unknown segment char"
 -- Track network, coordinates are (x, y) where x runs from 0 left to right, and y from 0 top to bottom
 --
 
-data Network = Network (Array (Int, Int) Segment)
+newtype Network = Network (Array (Int, Int) Segment)
 
 instance Show Network where
   show (Network n) = init $ unlines [ row y | y <- [0..ymax]]
@@ -97,6 +99,17 @@ testNetworkStr =
   , "  \\------/   "
   ]
 
+testNetwork2 :: State
+testNetwork2 = readNetwork
+  [ "/>-<\\  "
+  , "|   |  "
+  , "| /<+-\\"
+  , "| | | v"
+  , "\\>+</ |"
+  , "  |   ^"
+  , "  \\<->/"
+  ]
+
 -- | Read the initial state
 --
 -- >>> map show . carts $ readNetwork testNetworkStr
@@ -114,8 +127,8 @@ readNetwork xs = State
   , carts = map mkCart cartData
   }
   where
-    xmax = (length (head xs)) - 1
-    ymax = (length xs) - 1
+    xmax = length (head xs) - 1
+    ymax = length xs - 1
     rowData :: [(Int, ([(Int, Segment)], [(Int, Direction)]))]
     rowData = zip [0..] $ map readRow xs
     trackData :: [((Int, Int), Segment)]
@@ -155,13 +168,13 @@ readRow s = (zip [0..] (map readTrack s), cartIndices s)
     readTrack 'v' = Vertical
     readTrack c = fromChar c
     cartIndices :: String -> [(Int, Direction)]
-    cartIndices = catMaybes . map readCart . zip [0..]
-    readCart :: (Int, Char) -> Maybe (Int, Direction)
-    readCart (i, '>') = Just (i, East)
-    readCart (i, 'v') = Just (i, South)
-    readCart (i, '<') = Just (i, West)
-    readCart (i, '^') = Just (i, North)
-    readCart _ = Nothing
+    cartIndices = catMaybes . zipWith readCart [0..]
+    readCart :: Int -> Char -> Maybe (Int, Direction)
+    readCart i '>' = Just (i, East)
+    readCart i 'v' = Just (i, South)
+    readCart i '<' = Just (i, West)
+    readCart i '^' = Just (i, North)
+    readCart _ _ = Nothing
 
 -- | Run system until collision, return collision coordinates
 --
@@ -200,6 +213,32 @@ tick s = fmap (\cs -> s { carts = cs }) newCarts
       where
         c' = updateCart n c
 
+-- | Run system to coordinate of last surviving cart
+--
+-- >>> runToLastCart False testNetwork2
+-- (6,4)
+runToLastCart :: Bool -> State -> IO (Int, Int)
+runToLastCart log s = do
+  (lastCartsMoved, lastCartsUnmoved) <- iterateUntilM oneCart moveCart ([], sortCarts (carts s))
+  let lastCart = head (lastCartsMoved ++ map (updateCart n) lastCartsUnmoved) -- Finish tick
+  return (x lastCart, y lastCart)
+  where
+    n :: Network = network s
+    moveCart :: ([Cart], [Cart]) -> IO ([Cart], [Cart])
+    moveCart (movedCarts, unmovedCarts@(c:rest)) = do
+      when log $ print (movedCarts, unmovedCarts)
+      return (movedCarts', rest')
+      where
+        c' = updateCart n c
+        movedCarts'
+          | collides c' (movedCarts ++ rest) = filter (differentPosition c') movedCarts
+          | otherwise = c' : filter (differentPosition c') movedCarts
+        rest' = filter (differentPosition c') rest
+        numCarts' = length movedCarts' + length rest'
+    moveCart (movedCarts, []) = moveCart ([], sortCarts movedCarts)
+    oneCart (movedCarts, unmovedCarts) = (length movedCarts + length unmovedCarts) <= 1
+    differentPosition a b = x a /= x b || y a /= y b
+
 sortCarts :: [Cart] -> [Cart]
 sortCarts = sortBy cmpCarts
   where
@@ -211,7 +250,7 @@ sortCarts = sortBy cmpCarts
 
 -- Does the cart have same (x, y) as any of the carts in the list
 collides :: Cart -> [Cart] -> Bool
-collides c cs = any (sameCoord c) cs
+collides c = any (sameCoord c)
   where sameCoord c1 c2 = x c1 == x c2 && y c1 == y c2
 
 -- | Update position of cart with one move
@@ -265,5 +304,6 @@ main = do
   input <- readFile "input/day13.txt"
   let initialState = readNetwork $ lines input
   putStrLn $ "day 13 part a: " ++ show (runToCollision initialState)
-  putStrLn $ "day 13 part b: " ++ "NYI"
-  -- runLog initialState
+  putStr "day 13 part b: "
+  lastCoords <- runToLastCart False initialState
+  print lastCoords
