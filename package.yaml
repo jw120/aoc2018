@@ -23,45 +23,48 @@ dependencies:
 - monad-loops
 
 executables:
-  day01:
-    main: day01.hs
-    ghc-options: -main-is Day01
-  day02:
-    main: day02.hs
-    ghc-options: -main-is Day02
-  day03:
-    main: day03.hs
-    ghc-options: -main-is Day03
-  day04:
-    main: day04.hs
-    ghc-options: -main-is Day04
-  day05:
-    main: day05.hs
-    ghc-options: -main-is Day05
-  day06:
-    main: day06.hs
-    ghc-options: -main-is Day06
-  day07:
-    main: day07.hs
-    ghc-options: -main-is Day07
-  day08:
-    main: day08.hs
-    ghc-options: -main-is Day08
-  day09:
-    main: day09.hs
-    ghc-options: -main-is Day09
-  day10:
-    main: day10.hs
-    ghc-options: -main-is Day10
-  day11:
-    main: day11.hs
-    ghc-options: -main-is Day11
-  day12:
-    main: day12.hs
-    ghc-options: -main-is Day12
-  day13:
-    main: day13.hs
-    ghc-options: -main-is Day13
+  # day01:
+  #   main: day01.hs
+  #   ghc-options: -main-is Day01
+  # day02:
+  #   main: day02.hs
+  #   ghc-options: -main-is Day02
+  # day03:
+  #   main: day03.hs
+  #   ghc-options: -main-is Day03
+  # day04:
+  #   main: day04.hs
+  #   ghc-options: -main-is Day04
+  # day05:
+  #   main: day05.hs
+  #   ghc-options: -main-is Day05
+  # day06:
+  #   main: day06.hs
+  #   ghc-options: -main-is Day06
+  # day07:
+  #   main: day07.hs
+  #   ghc-options: -main-is Day07
+  # day08:
+  #   main: day08.hs
+  #   ghc-options: -main-is Day08
+  # day09:
+  #   main: day09.hs
+  #   ghc-options: -main-is Day09
+  # day10:
+  #   main: day10.hs
+  #   ghc-options: -main-is Day10
+  # day11:
+  #   main: day11.hs
+  #   ghc-options: -main-is Day11
+  # day12:
+  #   main: day12.hs
+  #   ghc-options: -main-is Day12
+  # day13:
+  #   main: day13.hs
+  #   ghc-options: -main-is Day13
+  day14:
+    main: day14.hs
+    ghc-options: -main-is Day14
 
 tests:
   doctest:
