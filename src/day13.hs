@@ -55,6 +55,7 @@ instance Show Network where
 --
 -- State for each cart
 --
+
 data Cart = Cart
   { x :: Int
   , y :: Int
@@ -176,6 +177,10 @@ readRow s = (zip [0..] (map readTrack s), cartIndices s)
     readCart i '^' = Just (i, North)
     readCart _ _ = Nothing
 
+--
+-- Part a
+--
+
 -- | Run system until collision, return collision coordinates
 --
 -- >>> runToCollision $ readNetwork testNetworkStr
@@ -212,6 +217,10 @@ tick s = fmap (\cs -> s { carts = cs }) newCarts
       | otherwise = Right (c' : movedCarts)
       where
         c' = updateCart n c
+
+--
+-- Part b
+--
 
 -- | Run system to coordinate of last surviving cart
 --
