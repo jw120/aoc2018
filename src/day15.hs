@@ -1,6 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 -- TODO - use a Coord data type whose Ord instance does reading order
+-- Add attacks to update
 
 module Day15 where
 
@@ -20,28 +21,33 @@ import qualified Data.Set as S
 --
 
 data State = State
-  { cavern :: Array (Int, Int) Bool -- False for walls. Coords (x from left, y from top) (0-indexed)
-  , mobs :: Map (Int, Int) Mob
+  { cavern :: Array Coord Bool -- False for walls. Coords (x from left, y from top) (0-indexed)
+  , mobs :: Map Coord Mob
   }
 
 instance Show State where
-  show s = init $ unlines [ row y | y <- [0..ymax]]
+  show s = init $ unlines [ row y | y <- [0..y cMax]]
     where
-      ((0, 0), (xmax, ymax)) = A.bounds (cavern s)
+      (Coord { x = 0, y = 0}, cMax) = A.bounds (cavern s)
       row :: Int -> String
-      row j = [toChar (cavern s A.! (x, j)) ((x, j) `M.lookup` (mobs s)) | x <- [0 .. xmax]]
+      row j = [toChar (cavern s A.! Coord { x = x, y = j }) ((x, j) `M.lookup` (mobs s)) | x <- [0 .. x cMax]]
       toChar :: Bool -> Maybe Mob -> Char
       toChar False _ = '#'
       toChar True (Just mob) = if side mob == Elf then 'E' else 'G'
       toChar True Nothing = '.'
 
-newtype Coord = Coord (Int, Int) deriving (Eq, Ord, A.Ix)
 
--- -- Accessor function gives false for coordinates outside the array
--- isOpen :: State -> (Int, Int) -> Bool
--- isOpen s c
---   | A.inRange (A.bounds (cavern s)) c = cavern s A.! c
---   | otherwise = False
+-- Coord has Ord instance to give "reading order"
+data Coord = Coord { x :: Int, y:: Int } deriving (Eq, A.Ix)
+
+instance Ord Coord where
+  compare c1 c2 = case compare (y c1) (y c2) of
+    LT -> LT
+    GT -> GT
+    EQ -> compare (x c1) (x c2)
+
+instance Show Coord where
+  show c = "(" + show (x c) + "," + show (y c) + ")"
 
 data Side = Elf | Goblin deriving (Eq, Show)
 
@@ -56,22 +62,22 @@ initialHealth :: Int = 200
 -- Mob move logic
 --
 
--- | Update the mob
-update :: Bool -> State -> (Int, Int) -> IO State
-update log s p = do
+-- | Update the given mob (with move or attack or nothing)
+update :: Bool -> State -> Coord -> IO State
+update log s c = do
     when log $ print s
-    let mob = fromJust $ M.lookup p (mobs s)
-    let neigbours :: [Mob] = mapMaybe (`M.lookup` (mobs s)) $ adjacent p
+    let mob = fromJust $ M.lookup c (mobs s)
+    let neigbours :: [Mob] = mapMaybe (`M.lookup` (mobs s)) $ adjacent c
     let enemeyNeigbours = filter ((/= side mob) . side) neigbours
     if null enemeyNeigbours
-      then move log s p
+      then move log s c
       else return s
 
 -- | Move the mob at given coordinates
-move :: Bool -> State -> (Int, Int) -> IO State
-move log s (x, y) = do
-    let mob = fromJust $ M.lookup (x, y) (mobs s)
-    when log $ putStrLn ("Moving " ++ show (side mob) ++ " from " ++ show (x, y))
+move :: Bool -> State -> Coord -> IO State
+move log s c = do
+    let mob = fromJust $ M.lookup c (mobs s)
+    when log $ putStrLn ("Moving " ++ show (side mob) ++ " from " ++ show c)
     let enemyPositions = map fst . M.toList . M.filter ((/= (side mob)) . side) $ mobs s
     when log $ putStrLn ("Enemies: " ++ show enemyPositions)
     let openPositions = nub . filter (isOpen s) $ concatMap adjacent enemyPositions
@@ -92,7 +98,7 @@ move log s (x, y) = do
 -- | Update every unit
 updateAll :: Bool -> State -> IO State
 updateAll log s = foldM (update log) s unitPositions
-  where unitPositions :: [(Int, Int)] = sortByReadingOrder $ M.keys (mobs s)
+  where unitPositions :: [(Int, Int)] = sort $ M.keys (mobs s)
 
 -- | Return all adjacent coordinates
 --
@@ -114,24 +120,8 @@ adjacentSet s = S.difference neighbours s
 -- >>> firstInReadingOrder [(3,5),(2,5),(2,3),(2,4),(3,1),(1,2)]
 -- (3,1)
 firstInReadingOrder :: [(Int, Int)] -> (Int, Int)
-firstInReadingOrder xs@(_:_) = head $ sortBy (compare `on` fst) withMinY
-    where
-      minY = minimum $ map snd xs
-      withMinY = filter ((== minY) . snd) xs
+firstInReadingOrder xs@(_:_) = head $ sort xs
 firstInReadingOrder [] = error "Empty list in firstInReadingOrder"
-
--- | Sort list into reading order
---
--- >>> sortByReadingOrder [(3,5),(2,5),(2,3),(2,4),(3,1),(1,2)]
--- [(3,1),(1,2),(2,3),(2,4),(2,5),(3,5)]
-sortByReadingOrder :: [(Int, Int)] -> [(Int, Int)]
-sortByReadingOrder = sortBy compareOnReadingOrder
-
-compareOnReadingOrder :: (Int, Int) -> (Int, Int) -> Ordering
-compareOnReadingOrder (x1, y1) (x2, y2) =
-  case compare y1 y2 of
-    EQ -> compare x1 x2
-    x -> x
 
 -- | return the target(s) that are closest to the start point
 findClosest :: State -> (Int, Int) -> [(Int, Int)] -> [(Int, Int)]
