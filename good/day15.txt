@@ -1,1 +1,2 @@
 day 15 part a: 178003
+day 15 part b: 48722

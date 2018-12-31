@@ -5,8 +5,7 @@ module Day15 where
 import Control.Monad (foldM, when)
 import Data.Array.IArray (Array)
 import qualified Data.Array.IArray as A
-import Data.Function (on)
-import Data.List (foldl', nub, sort, sortBy)
+import Data.List (foldl', nub, partition, sort, sortBy)
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (fromJust, mapMaybe)
@@ -21,6 +20,7 @@ data State = State
   { cavern :: Array Coord Bool -- False for walls. Coords (x from left, y from top) (0-indexed)
   , mobs :: Map Coord Mob
   , finished :: Bool
+  , elfPower :: Int
   } deriving Eq
 
 instance Show State where
@@ -126,7 +126,8 @@ attack s c
   | otherwise = s { mobs = M.delete c (mobs s) }
     where
       targetMob :: Mob = mobs s M.! c
-      hp :: Int = health targetMob - 3
+      attackPower :: Int = if side targetMob == Elf then 3 else elfPower s
+      hp :: Int = health targetMob - attackPower
 
 -- | Update every unit n times
 updateAll :: Bool -> Int -> State -> IO State
@@ -139,18 +140,31 @@ updateAll log n = go 0
           s' <- foldM (update log) s (M.keys (mobs s))
           go (i + 1) s'
 
--- | Part (a) Update to steady state
-runToSteadyState :: Bool -> State -> IO (Int, [Int])
+-- | Part (a) Update to steady state. Return number of rounds, elves health, goblins health
+runToSteadyState :: Bool -> State -> IO (Int, [Int], [Int])
 runToSteadyState log state = toScore <$> go (0, state)
   where
-    toScore :: (Int, State) -> (Int, [Int])
-    toScore (i, s) = (i - 1,  map health (M.elems (mobs s)))
+    toScore :: (Int, State) -> (Int, [Int], [Int])
+    toScore (i, s) = (i - 1,  map health es, map health gs)
+      where (es, gs) = partition ((== Elf) . side) $ M.elems (mobs s)
     go :: (Int, State) -> IO (Int, State)
     go (i, s)
       | finished s = return (i, s)
       | otherwise = do
           s' <- foldM (update log) s (M.keys (mobs s))
           go (i + 1, s')
+
+-- | Part (b) Increase elf attack power until no elves die
+rampElfPower :: Bool -> State -> IO (Int, [Int])
+rampElfPower log s = go 3
+  where
+    allElves :: [Int] = map health . filter ((== Elf) . side). M.elems $ mobs s
+    go :: Int -> IO (Int, [Int])
+    go p = do
+      (n, elves, _) <- runToSteadyState log (s { elfPower = p })
+      if length elves == length allElves
+        then return (n, elves)
+        else go (p + 1)
 
 -- | Return all adjacent coordinates
 --
@@ -221,6 +235,7 @@ readState xs = State
   { cavern =  A.array (cZero, Coord { x = xMax, y = yMax }) cavernData
   , mobs = M.fromList mobsData
   , finished = False
+  , elfPower = 3
   }
   where
     (xMax, yMax) = (length (head xs) - 1, length xs - 1)
@@ -278,7 +293,7 @@ test3 = readState
 -- >>> do; s<- updateAll False 47 test4; putStrLn (hpSum s)
 -- E: [], G: [200,131,59,200]
 -- >>> runToSteadyState False test4
--- (47,[200,131,59,200])
+-- (47,[],[200,131,59,200])
 test4 :: State
 test4 = readState
   [ "#######"
@@ -293,7 +308,7 @@ test4 = readState
 -- | Fifth test
 --
 -- >>> runToSteadyState False test5
--- (37,[200,197,185,200,200])
+-- (37,[200,197,185,200,200],[])
 test5 :: State
 test5 = readState
   [ "#######"
@@ -308,7 +323,7 @@ test5 = readState
 -- | Sixth test
 --
 -- >>> runToSteadyState False test6
--- (46,[164,197,200,98,200])
+-- (46,[164,197,200,98,200],[])
 test6 :: State
 test6 = readState
   [ "#######"
@@ -323,7 +338,7 @@ test6 = readState
 -- | Seventh test
 --
 -- >>> runToSteadyState False test7
--- (35,[200,98,200,95,200])
+-- (35,[],[200,98,200,95,200])
 test7 :: State
 test7 = readState
   [ "#######"
@@ -338,7 +353,7 @@ test7 = readState
 -- | Eighth test
 --
 -- >>> runToSteadyState False test8
--- (54,[200,98,38,200])
+-- (54,[],[200,98,38,200])
 test8 :: State
 test8 = readState
   [ "#######"
@@ -353,7 +368,7 @@ test8 = readState
 -- | Ninth test
 --
 -- >>> runToSteadyState False test9
--- (20,[137,200,200,200,200])
+-- (20,[],[137,200,200,200,200])
 test9 :: State
 test9 = readState
   [ "#########"
@@ -382,6 +397,7 @@ main :: IO ()
 main = do
   input <- readFile "input/day15.txt"
   let initialState = readState $ lines input
-  (aNum, aMobs) <- runToSteadyState False initialState
-  putStrLn $ "day 15 part a: " ++ show (aNum * sum aMobs)
-  putStrLn $ "day 15 part b: " ++ "NYI"
+  (aNum, aEs, aGs) <- runToSteadyState False initialState
+  putStrLn $ "day 15 part a: " ++ show (aNum * sum (aEs ++ aGs))
+  (bNum, bEs) <- rampElfPower False initialState
+  putStrLn $ "day 15 part b: " ++ show (bNum * sum bEs)

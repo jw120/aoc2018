@@ -65,9 +65,12 @@ executables:
   #day14:
   #  main: day14.hs
   #  ghc-options: -main-is Day14
-  day15:
-    main: day15.hs
-    ghc-options: -main-is Day15
+  # day15:
+  #   main: day15.hs
+  #   ghc-options: -main-is Day15
+  day16:
+    main: day16.hs
+    ghc-options: -main-is Day16
 
 tests:
   doctest:
