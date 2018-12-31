@@ -1,7 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- TODO - use a Coord data type whose Ord instance does reading order
--- Add attacks to update
+-- Other test cases. Find end
 
 module Day15 where
 
@@ -23,22 +22,28 @@ import qualified Data.Set as S
 data State = State
   { cavern :: Array Coord Bool -- False for walls. Coords (x from left, y from top) (0-indexed)
   , mobs :: Map Coord Mob
-  }
+  } deriving Eq
 
 instance Show State where
   show s = init $ unlines [ row y | y <- [0..y cMax]]
     where
       (Coord { x = 0, y = 0}, cMax) = A.bounds (cavern s)
       row :: Int -> String
-      row j = [toChar (cavern s A.! Coord { x = x, y = j }) ((x, j) `M.lookup` (mobs s)) | x <- [0 .. x cMax]]
+      row j = [toChar (isWall x) (hasMob x) | x <- [0 .. x cMax]]
+        where
+          c x = Coord { x = x, y = j }
+          isWall x = cavern s A.! c x
+          hasMob x = c x `M.lookup` (mobs s)
       toChar :: Bool -> Maybe Mob -> Char
       toChar False _ = '#'
       toChar True (Just mob) = if side mob == Elf then 'E' else 'G'
       toChar True Nothing = '.'
 
-
 -- Coord has Ord instance to give "reading order"
 data Coord = Coord { x :: Int, y:: Int } deriving (Eq, A.Ix)
+
+cZero :: Coord
+cZero = Coord { x = 0, y = 0 }
 
 instance Ord Coord where
   compare c1 c2 = case compare (y c1) (y c2) of
@@ -47,14 +52,14 @@ instance Ord Coord where
     EQ -> compare (x c1) (x c2)
 
 instance Show Coord where
-  show c = "(" + show (x c) + "," + show (y c) + ")"
+  show c = "(" ++ show (x c) ++ "," ++ show (y c) ++ ")"
 
 data Side = Elf | Goblin deriving (Eq, Show)
 
 data Mob = Mob
   { side :: Side
   , health :: Int
-  } deriving (Show)
+  } deriving (Eq, Show)
 
 initialHealth :: Int = 200
 
@@ -64,17 +69,30 @@ initialHealth :: Int = 200
 
 -- | Update the given mob (with move or attack or nothing)
 update :: Bool -> State -> Coord -> IO State
-update log s c = do
-    when log $ print s
+update log s c = case M.lookup c (mobs s) of
+  Nothing -> do
+    when log $ putStrLn ("No mob to move at " ++ show c)
+    return s
+  Just mob -> do
+    when log $ putStrLn ("update on " ++ show c)
     let mob = fromJust $ M.lookup c (mobs s)
-    let neigbours :: [Mob] = mapMaybe (`M.lookup` (mobs s)) $ adjacent c
-    let enemeyNeigbours = filter ((/= side mob) . side) neigbours
-    if null enemeyNeigbours
+    when log $ print s
+    -- Move phase: move if no enemies adjacent
+    let enemyNeigbours = adjacentEnemies s c
+    (s', c') <- if null enemyNeigbours
       then move log s c
-      else return s
+      else return (s, c)
+    -- Attack phase
+    let enemyNeighbours'= adjacentEnemies s' c'
+    if null enemyNeighbours'
+      then return s'
+      else do
+        let target = leastHP s enemyNeighbours'
+        when log $ putStrLn ("Attacking with " ++ show c' ++ " to " ++ show target)
+        return $ attack s' target
 
 -- | Move the mob at given coordinates
-move :: Bool -> State -> Coord -> IO State
+move :: Bool -> State -> Coord -> IO (State, Coord)
 move log s c = do
     let mob = fromJust $ M.lookup c (mobs s)
     when log $ putStrLn ("Moving " ++ show (side mob) ++ " from " ++ show c)
@@ -83,54 +101,98 @@ move log s c = do
     let openPositions = nub . filter (isOpen s) $ concatMap adjacent enemyPositions
     when log $ putStrLn ("Open positions: " ++ show openPositions)
     if null openPositions
-      then return s
+      then return (s, c)
       else do
-        let closestPositions = findClosest s (x, y) openPositions
+        let closestPositions = findClosest s c openPositions
         when log $ putStrLn ("Closest positions: " ++ show closestPositions)
-        let destination = firstInReadingOrder closestPositions
-        when log $ putStrLn ("Chosen position: " ++ show destination)
-        let closestFirstSteps = findClosest s destination . filter (isOpen s) $ adjacent (x, y)
-        when log $ putStrLn ("First steps closest to destination: " ++ show closestFirstSteps)
-        let firstStep = firstInReadingOrder closestFirstSteps
-        when log $ putStrLn ("First step: " ++ show firstStep)
-        return $ s { mobs = M.insert firstStep mob (M.delete (x, y) (mobs s)) }
+        if null closestPositions -- no reachable position
+          then return (s, c)
+          else do
+            let destination = head $ sort closestPositions
+            when log $ putStrLn ("Chosen position: " ++ show destination)
+            let closestFirstSteps = findClosest s destination . filter (isOpen s) $ adjacent c
+            when log $ putStrLn ("First steps closest to destination: " ++ show closestFirstSteps)
+            let firstStep = head $ sort closestFirstSteps
+            when log $ putStrLn ("First step: " ++ show firstStep)
+            return $ (s { mobs = M.insert firstStep mob (M.delete c (mobs s)) }, firstStep)
 
--- | Update every unit
-updateAll :: Bool -> State -> IO State
-updateAll log s = foldM (update log) s unitPositions
-  where unitPositions :: [(Int, Int)] = sort $ M.keys (mobs s)
+-- | Make an attack against the mob at given coordinates
+attack :: State -> Coord -> State
+attack s c
+  | hp > 0 = s { mobs = M.insert c (targetMob { health = hp }) (mobs s) }
+  | otherwise = s { mobs = M.delete c (mobs s) }
+    where
+      targetMob :: Mob = (mobs s) M.! c
+      hp :: Int = health targetMob - 3
+
+-- | Update every unit n times
+updateAll :: Bool -> Int -> State -> IO State
+updateAll log n state = go 0 state
+  where
+    go :: Int -> State -> IO State
+    go i s
+      | i >= n = return s
+      | otherwise =  do
+          s' <- foldM (update log) s (M.keys (mobs s))
+          go (i + 1) s'
+
+-- | Part a) Update to steady state
+runToSteadyState :: Bool -> State -> IO (Int, [Int])
+runToSteadyState log state = toScore <$> go (0, state)
+  where
+    toScore :: (Int, State) -> (Int, [Int])
+    toScore (i, s) = (i,  map health (M.elems (mobs s)))
+    go :: (Int, State) -> IO (Int, State)
+    go (i, s) = do
+      s' <- foldM (update log) s (M.keys (mobs s))
+      if s == s'
+        then return (i, s)
+        else go (i + 1, s')
 
 -- | Return all adjacent coordinates
 --
--- >>> sort $ adjacent (2, 1)
--- [(1,1),(2,0),(2,2),(3,1)]
-adjacent :: (Int, Int) -> [(Int, Int)]
-adjacent (x, y) = [(x + 1, y), (x, y + 1), (x - 1, y), (x, y - 1)]
+-- >>> sort . adjacent $ Coord { x = 2, y = 1 }
+-- [(2,0),(1,1),(3,1),(2,2)]
+adjacent :: Coord -> [Coord]
+adjacent c =
+  [ c { y = y c - 1 }
+  , c { x = x c + 1 }
+  , c { x = x c - 1 }
+  , c { y = y c + 1 }
+  ]
 
 -- | Return set of point adjacents to the given set
 --
--- >>> sort . S.toList . adjacentSet $ S.fromList [(3,3),(3,4)]
--- [(2,3),(2,4),(3,2),(3,5),(4,3),(4,4)]
-adjacentSet :: Set (Int, Int) -> Set (Int, Int)
+-- >>> sort . S.toList . adjacentSet $ S.fromList [Coord { x = 3, y = 3 }, Coord { x = 3, y = 4 }]
+-- [(3,2),(2,3),(4,3),(2,4),(4,4),(3,5)]
+adjacentSet :: Set Coord -> Set Coord
 adjacentSet s = S.difference neighbours s
   where neighbours = S.unions . map (S.fromList . adjacent) $ S.toList s
 
--- | Return the element of the list that is first in reading order
---
--- >>> firstInReadingOrder [(3,5),(2,5),(2,3),(2,4),(3,1),(1,2)]
--- (3,1)
-firstInReadingOrder :: [(Int, Int)] -> (Int, Int)
-firstInReadingOrder xs@(_:_) = head $ sort xs
-firstInReadingOrder [] = error "Empty list in firstInReadingOrder"
+-- | Return a sorted list of all adjacent enemies
+adjacentEnemies :: State -> Coord -> [Coord]
+adjacentEnemies s c = filter ((/= cSide) . side . (mobs s M.!)) adjacentAll
+  where
+    cSide ::Side = side $ (mobs s) M.! c
+    adjacentAll :: [Coord] = filter (`M.member` (mobs s)) $ adjacent c
+
+-- | Return coordinate of mob with lowest HP (tie broken by sort order)
+leastHP :: State -> [Coord] -> Coord
+leastHP s cs = head $ filter ((== minHP) . mobHealth) cs
+  where
+    mobHealth :: Coord -> Int
+    mobHealth c = health $ mobs s M.! c
+    minHP :: Int = minimum $ map mobHealth cs
 
 -- | return the target(s) that are closest to the start point
-findClosest :: State -> (Int, Int) -> [(Int, Int)] -> [(Int, Int)]
+findClosest :: State -> Coord -> [Coord] -> [Coord]
 findClosest s start targets = go initialVisited initialFrontier
     where
-      initialVisited :: Set (Int, Int) = S.empty
-      initialFrontier :: Set (Int, Int) = S.singleton start
-      go :: Set (Int, Int) -> Set (Int, Int) -> [(Int, Int)]
+      initialVisited :: Set Coord = S.empty
+      initialFrontier :: Set Coord = S.singleton start
+      go :: Set Coord -> Set Coord -> [Coord]
       go v f
+        | S.null f = []
         | S.null i = go v' f'
         | otherwise = S.toList i
         where
@@ -140,7 +202,7 @@ findClosest s start targets = go initialVisited initialFrontier
 
 -- | Is the given coordinate open (i.e. not a mob or wall)
 --
-isOpen :: State -> (Int, Int) -> Bool
+isOpen :: State -> Coord -> Bool
 isOpen s c = cavern s A.! c && M.notMember c (mobs s)
 
 -- | Read State from input
@@ -153,19 +215,18 @@ isOpen s c = cavern s A.! c && M.notMember c (mobs s)
 -- #######
 readState :: [String] -> State
 readState xs = State
-  { cavern =  A.array ((0, 0), (xMax, yMax)) cavernData
+  { cavern =  A.array (cZero, Coord { x = xMax, y = yMax }) cavernData
   , mobs = M.fromList mobsData
   }
   where
     (xMax, yMax) = (length (head xs) - 1, length xs - 1)
-    tiles :: [((Int, Int), Char)] = zip [(x, y) | y <- [0..yMax], x <- [0..xMax]] (concat xs)
-    cavernData :: [((Int, Int), Bool)] = map (\(c, x) -> (c, x `elem` ".GE")) tiles
-    mobsData :: [((Int, Int), Mob)] = mapMaybe toMob tiles
-    toMob :: ((Int, Int), Char) -> Maybe ((Int, Int), Mob)
+    tiles :: [(Coord, Char)] = zip [Coord { x = x, y = y } | y <- [0..yMax], x <- [0..xMax]] (concat xs)
+    cavernData :: [(Coord, Bool)] = map (\(c, x) -> (c, x `elem` ".GE")) tiles
+    mobsData :: [(Coord, Mob)] = mapMaybe toMob tiles
+    toMob :: (Coord, Char) -> Maybe (Coord, Mob)
     toMob (c, 'E') = Just (c, Mob { side = Elf, health = initialHealth })
     toMob (c, 'G') = Just (c, Mob { side = Goblin, health = initialHealth })
     toMob _ = Nothing
-
 
 --
 -- Test Data
@@ -202,6 +263,113 @@ test3 = readState
   , "#########"
   ]
 
+-- | Fourth set of test data
+--
+-- >>> do; s<- updateAll False 2 test4; putStrLn (hpSum s)
+-- E: [188,194], G: [200,200,194,194]
+-- >>> do; s<- updateAll False 23 test4; putStrLn (hpSum s)
+-- E: [131], G: [200,200,131,131]
+-- >>> do; s<- updateAll False 28 test4; putStrLn (hpSum s)
+-- E: [113], G: [200,131,116,200]
+-- >>> do; s<- updateAll False 47 test4; putStrLn (hpSum s)
+-- E: [], G: [200,131,59,200]
+-- >>> runToSteadyState False test4
+-- (47,[200,131,59,200])
+test4 :: State
+test4 = readState
+  [ "#######"
+  , "#.G...#"
+  , "#...EG#"
+  , "#.#.#G#"
+  , "#..G#E#"
+  , "#.....#"
+  , "#######"
+  ]
+
+-- | Fifth test
+--
+-- >>> runToSteadyState False test5
+-- (37,[200,197,185,200,200])
+test5 :: State
+test5 = readState
+  [ "#######"
+  , "#G..#E#"
+  , "#E#E.E#"
+  , "#G.##.#"
+  , "#...#E#"
+  , "#...E.#"
+  , "#######"
+  ]
+
+-- | Sixth test
+--
+-- >>> runToSteadyState False test6
+-- (46,[164,197,200,98,200])
+test6 :: State
+test6 = readState
+  [ "#######"
+  , "#E..EG#"
+  , "#.#G.E#"
+  , "#E.##E#"
+  , "#G..#.#"
+  , "#..E#.#"
+  , "#######"
+  ]
+
+-- | Seventh test
+--
+-- >>> runToSteadyState False test7
+-- (35,[200,98,200,95,200])
+test7 :: State
+test7 = readState
+  [ "#######"
+  , "#E.G#.#"
+  , "#.#G..#"
+  , "#G.#.G#"
+  , "#G..#.#"
+  , "#...E.#"
+  , "#######"
+  ]
+
+-- | Eighth test
+--
+-- >>> runToSteadyState False test8
+-- (54,[200,98,38,200])
+test8 :: State
+test8 = readState
+  [ "#######"
+  , "#.E...#"
+  , "#.#..G#"
+  , "#.###.#"
+  , "#E#G#G#"
+  , "#...#G#"
+  , "#######"
+  ]
+
+-- | Ninth test
+--
+-- >>> runToSteadyState False test9
+-- (20,[137,200,200,200,200])
+test9 :: State
+test9 = readState
+  [ "#########"
+  , "#G......#"
+  , "#.E.#...#"
+  , "#..##..G#"
+  , "#...##..#"
+  , "#...#...#"
+  , "#.G...G.#"
+  , "#.....G.#"
+  , "#########"
+  ]
+
+-- Show summary of mob HP
+hpSum :: State -> String
+hpSum s = "E: " ++ show (sideHealth Elf) ++ ", G: " ++ show (sideHealth Goblin)
+    where
+      sideHealth :: Side -> [Int]
+      sideHealth x = map health . filter ((== x) . side) . M.elems $ mobs s
+
 --
 -- Main
 --
@@ -210,13 +378,17 @@ main :: IO ()
 main = do
   input <- readFile "input/day15.txt"
   let initialState = readState $ lines input
-  print test3
-  s1 <- updateAll False test3
+  putStrLn "** After 0 iterations"
+  print test4
+--  putStrLn $ hpSum test4
+  s1 <- updateAll False 26 test4
+  putStrLn "** After 26 iteration"
   print s1
-  s2 <- updateAll False s1
+  putStrLn $ hpSum s1
+  s2 <- updateAll True 1 s1
+  putStrLn "** After 27 iterations"
   print s2
-  s3 <- updateAll True s2
-  print s3
+  putStrLn $ hpSum s2
   return ()
 --  putStrLn $ "day 15 part a: " ++ "NYI"
 --  putStrLn $ "day 15 part b: " ++ "NYI"
