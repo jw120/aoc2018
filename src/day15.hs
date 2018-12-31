@@ -1,7 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
--- Other test cases. Find end
-
 module Day15 where
 
 import Control.Monad (foldM, when)
@@ -22,6 +20,7 @@ import qualified Data.Set as S
 data State = State
   { cavern :: Array Coord Bool -- False for walls. Coords (x from left, y from top) (0-indexed)
   , mobs :: Map Coord Mob
+  , finished :: Bool
   } deriving Eq
 
 instance Show State where
@@ -33,7 +32,7 @@ instance Show State where
         where
           c x = Coord { x = x, y = j }
           isWall x = cavern s A.! c x
-          hasMob x = c x `M.lookup` (mobs s)
+          hasMob x = c x `M.lookup` mobs s
       toChar :: Bool -> Maybe Mob -> Char
       toChar False _ = '#'
       toChar True (Just mob) = if side mob == Elf then 'E' else 'G'
@@ -64,12 +63,13 @@ data Mob = Mob
 initialHealth :: Int = 200
 
 --
--- Mob move logic
+-- Mob update logic
 --
 
--- | Update the given mob (with move or attack or nothing)
+-- | Update the given mob
 update :: Bool -> State -> Coord -> IO State
 update log s c = case M.lookup c (mobs s) of
+  -- Catch the case where a mob is killed before it has a chance to move
   Nothing -> do
     when log $ putStrLn ("No mob to move at " ++ show c)
     return s
@@ -84,7 +84,7 @@ update log s c = case M.lookup c (mobs s) of
       else return (s, c)
     -- Attack phase
     let enemyNeighbours'= adjacentEnemies s' c'
-    if null enemyNeighbours'
+    if finished s' || null enemyNeighbours'
       then return s'
       else do
         let target = leastHP s enemyNeighbours'
@@ -96,25 +96,28 @@ move :: Bool -> State -> Coord -> IO (State, Coord)
 move log s c = do
     let mob = fromJust $ M.lookup c (mobs s)
     when log $ putStrLn ("Moving " ++ show (side mob) ++ " from " ++ show c)
-    let enemyPositions = map fst . M.toList . M.filter ((/= (side mob)) . side) $ mobs s
-    when log $ putStrLn ("Enemies: " ++ show enemyPositions)
-    let openPositions = nub . filter (isOpen s) $ concatMap adjacent enemyPositions
-    when log $ putStrLn ("Open positions: " ++ show openPositions)
-    if null openPositions
-      then return (s, c)
+    let enemyPositions = map fst . M.toList . M.filter ((/= side mob) . side) $ mobs s
+    if null enemyPositions
+      then return (s { finished = True }, c)
       else do
-        let closestPositions = findClosest s c openPositions
-        when log $ putStrLn ("Closest positions: " ++ show closestPositions)
-        if null closestPositions -- no reachable position
+        when log $ putStrLn ("Enemies: " ++ show enemyPositions)
+        let openPositions = nub . filter (isOpen s) $ concatMap adjacent enemyPositions
+        when log $ putStrLn ("Open positions: " ++ show openPositions)
+        if null openPositions
           then return (s, c)
           else do
-            let destination = head $ sort closestPositions
-            when log $ putStrLn ("Chosen position: " ++ show destination)
-            let closestFirstSteps = findClosest s destination . filter (isOpen s) $ adjacent c
-            when log $ putStrLn ("First steps closest to destination: " ++ show closestFirstSteps)
-            let firstStep = head $ sort closestFirstSteps
-            when log $ putStrLn ("First step: " ++ show firstStep)
-            return $ (s { mobs = M.insert firstStep mob (M.delete c (mobs s)) }, firstStep)
+            let closestPositions = findClosest s c openPositions
+            when log $ putStrLn ("Closest positions: " ++ show closestPositions)
+            if null closestPositions -- no reachable position
+              then return (s, c)
+              else do
+                let destination = minimum closestPositions
+                when log $ putStrLn ("Chosen position: " ++ show destination)
+                let closestFirstSteps = findClosest s destination . filter (isOpen s) $ adjacent c
+                when log $ putStrLn ("First steps closest to destination: " ++ show closestFirstSteps)
+                let firstStep = minimum closestFirstSteps
+                when log $ putStrLn ("First step: " ++ show firstStep)
+                return (s { mobs = M.insert firstStep mob (M.delete c (mobs s)) }, firstStep)
 
 -- | Make an attack against the mob at given coordinates
 attack :: State -> Coord -> State
@@ -122,12 +125,12 @@ attack s c
   | hp > 0 = s { mobs = M.insert c (targetMob { health = hp }) (mobs s) }
   | otherwise = s { mobs = M.delete c (mobs s) }
     where
-      targetMob :: Mob = (mobs s) M.! c
+      targetMob :: Mob = mobs s M.! c
       hp :: Int = health targetMob - 3
 
 -- | Update every unit n times
 updateAll :: Bool -> Int -> State -> IO State
-updateAll log n state = go 0 state
+updateAll log n = go 0
   where
     go :: Int -> State -> IO State
     go i s
@@ -136,18 +139,18 @@ updateAll log n state = go 0 state
           s' <- foldM (update log) s (M.keys (mobs s))
           go (i + 1) s'
 
--- | Part a) Update to steady state
+-- | Part (a) Update to steady state
 runToSteadyState :: Bool -> State -> IO (Int, [Int])
 runToSteadyState log state = toScore <$> go (0, state)
   where
     toScore :: (Int, State) -> (Int, [Int])
-    toScore (i, s) = (i,  map health (M.elems (mobs s)))
+    toScore (i, s) = (i - 1,  map health (M.elems (mobs s)))
     go :: (Int, State) -> IO (Int, State)
-    go (i, s) = do
-      s' <- foldM (update log) s (M.keys (mobs s))
-      if s == s'
-        then return (i, s)
-        else go (i + 1, s')
+    go (i, s)
+      | finished s = return (i, s)
+      | otherwise = do
+          s' <- foldM (update log) s (M.keys (mobs s))
+          go (i + 1, s')
 
 -- | Return all adjacent coordinates
 --
@@ -173,8 +176,8 @@ adjacentSet s = S.difference neighbours s
 adjacentEnemies :: State -> Coord -> [Coord]
 adjacentEnemies s c = filter ((/= cSide) . side . (mobs s M.!)) adjacentAll
   where
-    cSide ::Side = side $ (mobs s) M.! c
-    adjacentAll :: [Coord] = filter (`M.member` (mobs s)) $ adjacent c
+    cSide ::Side = side $ mobs s M.! c
+    adjacentAll :: [Coord] = filter (`M.member` mobs s) $ adjacent c
 
 -- | Return coordinate of mob with lowest HP (tie broken by sort order)
 leastHP :: State -> [Coord] -> Coord
@@ -196,7 +199,7 @@ findClosest s start targets = go initialVisited initialFrontier
         | S.null i = go v' f'
         | otherwise = S.toList i
         where
-          i = (S.intersection f (S.fromList targets))
+          i = S.intersection f (S.fromList targets)
           v' = S.union v f
           f' = S.difference (S.filter (isOpen s) (adjacentSet f)) v'
 
@@ -217,6 +220,7 @@ readState :: [String] -> State
 readState xs = State
   { cavern =  A.array (cZero, Coord { x = xMax, y = yMax }) cavernData
   , mobs = M.fromList mobsData
+  , finished = False
   }
   where
     (xMax, yMax) = (length (head xs) - 1, length xs - 1)
@@ -378,17 +382,6 @@ main :: IO ()
 main = do
   input <- readFile "input/day15.txt"
   let initialState = readState $ lines input
-  putStrLn "** After 0 iterations"
-  print test4
---  putStrLn $ hpSum test4
-  s1 <- updateAll False 26 test4
-  putStrLn "** After 26 iteration"
-  print s1
-  putStrLn $ hpSum s1
-  s2 <- updateAll True 1 s1
-  putStrLn "** After 27 iterations"
-  print s2
-  putStrLn $ hpSum s2
-  return ()
---  putStrLn $ "day 15 part a: " ++ "NYI"
---  putStrLn $ "day 15 part b: " ++ "NYI"
+  (aNum, aMobs) <- runToSteadyState False initialState
+  putStrLn $ "day 15 part a: " ++ show (aNum * sum aMobs)
+  putStrLn $ "day 15 part b: " ++ "NYI"
