@@ -20,7 +20,8 @@ dependencies:
 - attoparsec
 - bytestring
 - doctest
-- monad-loops
+- mtl
+#- monad-loop
 
 executables:
   # day01:
@@ -68,9 +69,12 @@ executables:
   # day15:
   #   main: day15.hs
   #   ghc-options: -main-is Day15
-  day16:
-    main: day16.hs
-    ghc-options: -main-is Day16
+  #day16:
+  #  main: day16.hs
+  #  ghc-options: -main-is Day16
+  day18:
+    main: day18.hs
+    ghc-options: -main-is Day18
 
 tests:
   doctest:
