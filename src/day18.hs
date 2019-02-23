@@ -15,6 +15,7 @@ data Site
   = OpenGround
   | Trees
   | LumberYard
+  deriving (Eq)
 
 readSite :: Char -> Site
 readSite '.' = OpenGround
@@ -31,7 +32,7 @@ instance Show Site where
 -- Area is the square grid of sites indexed from top-left (0,0) to (xMax, yMax) bottom-right
 --
 
-newtype Area = Area (Array (Int, Int) Site)
+newtype Area = Area (Array (Int, Int) Site) deriving (Eq)
 
 instance Show Area where
   show (Area a) = init $ unlines [ row y | y <- [0 .. yMax]]
@@ -66,11 +67,50 @@ readArea s
 -- "#.."
 -- >>> concatMap show $ adjacentSites (2, 2) test0
 -- "...|..|#"
+-- >>> concatMap show $ adjacentSites (9, 3) test0
+-- "#..#|"
 adjacentSites :: (Int, Int) -> Area -> [Site]
 adjacentSites (x, y) (Area a) = [ a ! (i, j) | j <- [y - 1 .. y + 1], i <- [x - 1 .. x + 1], valid (i, j)]
   where
     ((0, 0), (xMax, yMax)) = A.bounds a
-    valid (c, r) = (c /= x || r /= y) && c >= 0 && c < xMax && r >=0 && r < yMax
+    valid (c, r) = (c /= x || r /= y) && c >= 0 && c <= xMax && r >=0 && r <= yMax
+
+--
+-- Update logic
+--
+
+-- | Apply update rules to the area
+--
+-- >>> update test0 == test1
+-- True
+-- >>> (iterate update test0) !! 10 == test10
+-- True
+update :: Area -> Area
+update (Area a) = Area $ A.array (A.bounds a) (map updateSite (A.assocs a))
+  where
+    updateSite :: ((Int, Int), Site) -> ((Int, Int), Site)
+    updateSite (coords, s) = (coords, newSite (adjacentSites coords (Area a)) s)
+    newSite :: [Site] -> Site -> Site
+    newSite surrounds OpenGround
+      | length (filter (== Trees) surrounds) >= 3 = Trees
+      | otherwise = OpenGround
+    newSite surrounds Trees
+      | length (filter (== LumberYard) surrounds) >= 3 = LumberYard
+      | otherwise = Trees
+    newSite surrounds LumberYard
+      | LumberYard `notElem` surrounds = OpenGround
+      | Trees `notElem` surrounds = OpenGround
+      | otherwise = LumberYard
+
+-- | Resource values of an Area
+--
+-- >>> resources test10
+-- 1147
+resources :: Area -> Int
+resources (Area a) = trees * lumberYards
+  where
+    trees = length . filter (== Trees) $ A.elems a
+    lumberYards = length . filter (== LumberYard) $ A.elems a
 
 test0 :: Area
 test0 = readArea $
@@ -85,9 +125,38 @@ test0 = readArea $
   "|.||||..|.\n" ++
   "...#.|..|.\n"
 
+test1 :: Area
+test1 = readArea . unlines $
+  [ ".......##."
+  , "......|###"
+  , ".|..|...#."
+  , "..|#||...#"
+  , "..##||.|#|"
+  , "...#||||.."
+  , "||...|||.."
+  , "|||||.||.|"
+  , "||||||||||"
+  , "....||..|."
+  ]
+
+test10 :: Area
+test10 = readArea . unlines $
+  [ ".||##....."
+  , "||###....."
+  , "||##......"
+  , "|##.....##"
+  , "|##.....##"
+  , "|##....##|"
+  , "||##.####|"
+  , "||#####|||"
+  , "||||#|||||"
+  , "||||||||||"
+  ]
+
 main :: IO ()
 main = do
   input <- readFile "input/day18.txt"
-  let initalArea = readArea input
-  putStrLn $ "day 16 part a: " ++ "NYI"
-  putStrLn $ "day 16 part b: " ++ "NYI"
+  let initialArea = readArea input
+  let updatedArea = iterate update initialArea !! 10
+  putStrLn $ "day 18 part a: " ++ show (resources updatedArea)
+  putStrLn $ "day 18 part b: " ++ "NYI"

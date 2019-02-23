@@ -14,14 +14,14 @@ extra-source-files:
 
 # We include all dependencies here so stack will find them when editting
 dependencies:
-- base >= 4.7 && < 5
-- containers
-- array
-- attoparsec
-- bytestring
-- doctest
-- mtl
+  - base >= 4.7 && < 5
+  - containers
+  - array
+#- attoparsec
+#- bytestring
+#- doctest
 #- monad-loop
+#- mtl
 
 executables:
   # day01:
