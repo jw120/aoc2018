@@ -5,6 +5,8 @@ module Day18 where
 import Data.Array.IArray (Array, (//), (!))
 import qualified Data.Array.IArray as A
 import Data.List (foldl')
+import qualified Data.Map as M
+import Data.Map (Map)
 
 
 --
@@ -157,6 +159,45 @@ main :: IO ()
 main = do
   input <- readFile "input/day18.txt"
   let initialArea = readArea input
-  let updatedArea = iterate update initialArea !! 10
+  let areaList = iterate update initialArea
+  let updatedArea = areaList !! 10
   putStrLn $ "day 18 part a: " ++ show (resources updatedArea)
-  putStrLn $ "day 18 part b: " ++ "NYI"
+  -- Rather than look for a loop in the areas, instead look at resources
+  -- But need to skip initial values to allow sequence to converge
+  let skip = 450 -- obtained manually by looking at the generated sequence
+  let resourceList = map resources areaList
+  let loop = findLoop $ drop skip resourceList
+  putStrLn $ "day 18 part b: " ++ show (lookupLoop loop (1000000000 - skip))
+--   showSeq 0 initialArea
+
+-- -- Used to explore loop
+-- showSeq :: Int -> Area -> IO ()
+-- showSeq n a = do
+--   putStrLn $ show n ++ ": " ++ show (resources a)
+--   showSeq (n + 1) (update a)
+
+-- | Find a repeating pattern in a sequence
+-- | Given a sequence x_0, x_1... return the repeating part and the index that the loop starts
+--
+-- >>> findLoop [0,1,2,3,4,5,3,4,5,3,4,5]
+-- ([3,4,5],3)
+findLoop :: Ord a => [a] -> ([a], Int)
+findLoop xs = (subseq, first)
+  where
+    subseq = take (firstRep - first) $ drop first xs
+    (first, firstRep) = go M.empty 0 xs
+    go :: Ord b => Map b Int -> Int -> [b] -> (Int, Int)
+    go m i (x: xs) = case M.lookup x m of
+      Just n -> (n, i)
+      Nothing -> go (M.insert x i m) (i + 1) xs
+    go _ _ [] = error "Unexpected empty list in findLoop"
+
+-- | Lookup a value in a repeating sequence
+--
+-- >>> lookupLoop ([3,4,5],3) 10
+-- 4
+lookupLoop :: ([x], Int) -> Int -> x
+lookupLoop (xs, start) n = xs !! nAroundLoop
+  where
+    nFromLoopStart = n - start
+    nAroundLoop = nFromLoopStart `mod` length xs
