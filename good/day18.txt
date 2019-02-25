@@ -1,0 +1,2 @@
+day 18 part a: 560091
+day 18 part b: NYI

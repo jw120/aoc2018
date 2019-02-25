@@ -72,9 +72,9 @@ executables:
   #day16:
   #  main: day16.hs
   #  ghc-options: -main-is Day16
-  # day18:
-  #   main: day18.hs
-  #   ghc-options: -main-is Day18
+  day18:
+     main: day18.hs
+     ghc-options: -main-is Day18
   day19:
     main: day19.hs
     ghc-options: -main-is Day19
