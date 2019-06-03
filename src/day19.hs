@@ -120,10 +120,10 @@ step s p = s { registers = r', ipValue = ipValue' }
 
 -- | Run the program until it halts
 --
--- >>> run 0 testProgram
+-- >>> run testProgram (initialState 0)
 -- 7:[6,5,6,0,0,9]
-run :: Int -> Program -> State
-run ipAssignment p = go (initialState ipAssignment)
+run :: Program -> State -> State
+run p = go
   where
     go :: State -> State
     go s
@@ -145,7 +145,10 @@ main :: IO ()
 main = do
   input <- readFile "input/day19.txt"
   let (ipStr : progStr) = lines input
-  let finalState = run (readIP ipStr) (readProgram progStr)
-  let reg0 = registers finalState ! 0
-  putStrLn $ "day 19 part a: " ++ show reg0
-  putStrLn $ "day 19 part b: " ++ "NYI"
+  let startState :: State = initialState (readIP ipStr)
+  let prog :: Program = readProgram progStr
+  let finalState :: State = run prog startState
+  putStrLn $ "day 19 part a: " ++ show (registers finalState ! 0)
+  let startState' = startState { registers = registers startState // [(0, 1)]}
+  let finalState' :: State = run prog startState'
+  putStrLn $ "day 19 part b: " ++ show (registers finalState' ! 0)
