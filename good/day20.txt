@@ -1,0 +1,2 @@
+day 20 part a: 3930
+day 20 part b: 8240
