@@ -78,10 +78,12 @@ executables:
   #day19:
   #  main: day19.hs
   #  ghc-options: -main-is Day19
-  day20:
-    main: day20.hs
-    ghc-options: -main-is Day20
-
+  # day20:
+  #   main: day20.hs
+  #   ghc-options: -main-is Day20
+  day22:
+    main: day22.hs
+    ghc-options: -main-is Day22
 tests:
   doctest:
     source-dirs:        test

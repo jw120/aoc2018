@@ -197,7 +197,6 @@ parseRegex s
 main :: IO ()
 main = do
   input <- readFile "input/day20.txt"
-  putStrLn $ "day 20 read input file of length " ++ show (length input)
   let doors = readPath . tail . init $ init input -- trimming trailing newline and $..^
   putStrLn $ "day 20 part a: " ++ show (flood doors)
   putStrLn $ "day 20 part b: " ++ show (remaining 1000 doors)
