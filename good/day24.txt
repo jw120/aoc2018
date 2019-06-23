@@ -1,0 +1,2 @@
+day 24 part a: 13331
+day 24 part b: NYI
