@@ -17,8 +17,8 @@ dependencies:
   - base >= 4.7 && < 5
   - containers
   - array
-#- attoparsec
-#- bytestring
+  - attoparsec
+  - bytestring
   - doctest
 #- monad-loop
 #- mtl
@@ -81,9 +81,12 @@ executables:
   # day20:
   #   main: day20.hs
   #   ghc-options: -main-is Day20
-  day22:
-    main: day22.hs
-    ghc-options: -main-is Day22
+  # day22:
+  #  main: day22.hs
+  #  ghc-options: -main-is Day22
+  day23:
+    main: day23.hs
+    ghc-options: -main-is Day23
 tests:
   doctest:
     source-dirs:        test

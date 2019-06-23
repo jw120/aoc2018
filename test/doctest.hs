@@ -20,5 +20,6 @@ main = doctest
   -- , "src/day18.hs"
   -- , "src/day19.hs"
   -- , "src/day20.hs"
-  "src/day22.hs"
+  -- , "src/day22.hs"
+  "src/day23.hs"
   ]
