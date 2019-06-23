@@ -127,13 +127,42 @@ runOne log s = do
 
 -- Select a target for the group and return the index of the selected group
 assignTarget :: State -> [(GroupIndex, GroupIndex)] -> GroupIndex -> [(GroupIndex, GroupIndex)]
-assignTarget s assigned i = undefined
+assignTarget s assigned i
+  | null availableTargets = assigned -- no targets left to choose
+  | damage == 0 = assigned -- all remaing targets are immune
+  | otherwise = (i, target) : assigned
+  where
+    assignedTargets :: [GroupIndex]= map snd assigned
+    availableTargets :: [GroupIndex] = filter (`notElem` assignedTargets) $ M.keys s
+    availableDamages :: [(GroupIndex, Int)] = map (\t -> (t, potentialDamage (s ! i) (s ! t))) availableTargets
+    (target, damage) = maximumBy compareTargets availableDamages
+    compareTargets :: (GroupIndex, Int) -> (GroupIndex, Int) -> Ordering
+    compareTargets (t1, d1) (t2, d2) = case compare d1 d2 of
+      LT -> LT
+      GT -> GT
+      EQ -> case compare (effPower (s ! t1)) (effPower (s ! t2)) of
+        LT -> LT
+        GT -> GT
+        EQ -> case compare (initiative (s ! t1)) (initiative (s ! t2)) of
+          LT -> LT
+          GT -> GT
+          EQ -> error "Cannot split targets"
 
 -- | Return the effective power of a group
 -- >>> map (\g -> (n g, effPower g)) $ M.elems exampleState
 -- [(17,76619),(989,24725),(801,92916),(4485,53820)]
 effPower :: Group -> Int
 effPower u = n u * atk u
+
+-- | Potential damage done by group attacking another (ignoring damage lost with partial units)
+potentialDamage :: Group -> Group -> Int
+potentialDamage gAtk gDef = typeFactor (n gAtk * atk gAtk)  (atkType gAtk) (weak gDef) (immune gDef)
+    where
+      typeFactor :: Int -> AtkType -> [AtkType] -> [AtkType] -> Int
+      typeFactor d a weak immune
+        | a `elem` weak = d `div` 2
+        | a `elem` immune = 0
+        | otherwise = d
 
 -- | Return the group indicies sorted in descending order of attack power (with tiebreakers)
 --
@@ -152,13 +181,14 @@ indicesByEffPower s = sortBy (flip comparePower) $ M.keys s
 
 main :: IO ()
 main = do
-  input <- B.readFile "input/day24.txt"
-  let state = readState input
+  -- input <- B.readFile "input/day24.txt"
+  -- let state = readState input
+  let state = exampleState
   printState state
   putStrLn ""
   runOne True state
-  putStrLn $ "day 24 part a: " ++ "NYI"
-  putStrLn $ "day 24 part b: " ++ "NYI"
+  -- putStrLn $ "day 24 part a: " ++ "NYI"
+  -- putStrLn $ "day 24 part b: " ++ "NYI"
 
 exampleState :: State
 exampleState = readState "\
