@@ -3,7 +3,7 @@
 module Day24 where
 
 import           Control.Applicative ((<|>), (<*))
-import           Control.Monad (when)
+import           Control.Monad (foldM, when)
 import           Data.Attoparsec.ByteString.Char8 (Parser, char, choice, decimal, many', sepBy1,
                                                     parseOnly, parseTest, skipWhile, string, skipSpace)
 import qualified Data.ByteString as B
@@ -123,10 +123,8 @@ runOne log s = do
   when log $ putStrLn ("Targets: " ++ show targetAssignments)
   let sortedAssignments :: [(GroupIndex, GroupIndex)] = sortBy attackerInitiative targetAssignments
   when log $ putStrLn ("Sorted targets: " ++ show sortedAssignments)
-
-  -- in order of atkpower, each group chooses zero/one targets (only one group can target each group)
-  -- in order of initiative, attack
-  return s
+  s' <- foldM (resolveAttack log) s sortedAssignments
+  return $ M.filter ((> 0) . n) s'
     where
       attackerInitiative :: (GroupIndex, GroupIndex) -> (GroupIndex, GroupIndex) -> Ordering
       attackerInitiative (a1, _) (a2, _) = compare (initiative (s ! a2)) (initiative (s ! a1))
@@ -155,6 +153,20 @@ assignTarget s assigned i
           LT -> LT
           GT -> GT
           EQ -> error "Cannot split targets"
+
+-- | Update state for give attack
+resolveAttack :: Bool -> State -> (GroupIndex, GroupIndex) -> IO State
+resolveAttack log s (a, d) = do
+  when log $ putStrLn (show a ++ " attacks " ++ show d ++ ": " ++
+    show damage ++ " damage done, " ++
+    show killed ++ " units killed, " ++ show remaining ++ " remaining")
+  return $ M.insert d (defender { n = remaining }) s
+    where
+      defender = s ! d
+      damage = potentialDamage (s ! a) defender
+      potentialKilled = damage `div` hp defender
+      killed = min (n defender) potentialKilled
+      remaining = n defender - killed
 
 -- | Return the effective power of a group
 -- >>> map (\g -> (n g, effPower g)) $ M.elems exampleState
@@ -187,17 +199,29 @@ indicesByEffPower s = sortBy (flip comparePower) $ M.keys s
         u1 = s ! i1
         u2 = s ! i2
 
+-- | Apply runOne until only one side remains
+runAll :: Bool -> State -> IO State
+runAll log s = do
+  let numImm = M.size $ M.filter ((== ImmuneSystem) . side) s
+  let numInf = M.size $ M.filter ((== Infection) . side) s
+  if numImm == 0 || numInf == 0
+    then
+      return s
+    else do
+      s' <- runOne log s
+      runAll log s'
+
 main :: IO ()
 main = do
-  -- input <- B.readFile "input/day24.txt"
-  -- let state = readState input
-  let state = exampleState
-  printState state
-  putStrLn ""
-  runOne True state
-  return ()
-  -- putStrLn $ "day 24 part a: " ++ "NYI"
-  -- putStrLn $ "day 24 part b: " ++ "NYI"
+  input <- B.readFile "input/day24.txt"
+  let state = readState input
+  -- let state = exampleState
+  -- printState state
+  state' <- runAll True state
+  printState state'
+  let finalUnits = sum . map n $ M.elems state'
+  putStrLn $ "day 24 part a: " ++ show finalUnits
+  putStrLn $ "day 24 part b: " ++ "NYI"
 
 exampleState :: State
 exampleState = readState "\
