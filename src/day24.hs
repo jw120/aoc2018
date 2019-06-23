@@ -3,10 +3,11 @@
 module Day24 where
 
 import           Control.Applicative ((<|>), (<*))
-import qualified Data.Attoparsec.ByteString.Char8 as AC
+import           Data.Attoparsec.ByteString.Char8 (Parser, char, choice, decimal, many', sepBy1,
+                                                    parseOnly, parseTest, skipWhile, string, skipSpace)
 import qualified Data.ByteString as B
 import           Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as BC
+import           Data.ByteString.Char8 (pack)
 import           Data.Foldable (maximumBy)
 import           Data.Functor (($>))
 import           Data.Ord (comparing)
@@ -38,34 +39,23 @@ data AtkType = Cold | Fire | Bludgeoning | Slashing | Radiation deriving (Eq, Sh
 
 -- | Read initial state
 readState :: ByteString -> State
-readState = either error id . AC.parseOnly state
+readState = either error id . parseOnly state
   where
-    state :: AC.Parser State
+    state :: Parser State
     state = do
-      AC.string "Immune System:"
-      AC.skipSpace
-      immuneSystem <- AC.many' (unit <* AC.skipSpace)
-      AC.skipSpace
-      AC.string "Infection:"
-      AC.skipSpace
-      infection <- AC.many' (unit <* AC.skipSpace)
+      immuneSystem <- "Immune System:" *> skipSpace *> many' (unit <* skipSpace)
+      infection <- skipSpace *> "Infection:" *> skipSpace *> many' (unit <* skipSpace)
       return State { immuneSystem = immuneSystem, infection = infection }
 
 -- | Parse unit
-unit :: AC.Parser Unit
+unit :: Parser Unit
 unit = do
-  n <- AC.decimal
-  AC.string " units each with "
-  hp <- AC.decimal
-  AC.string " hit points "
-  (weak, immune) <- weaknesses
-  AC.skipSpace
-  AC.string "with an attack that does "
-  atk <- AC.decimal
-  AC.skipSpace
-  t <- attackType
-  AC.string " damage at initiative "
-  initiative <- AC.decimal
+  n <- decimal
+  hp <- " units each with " *> decimal
+  (weak, immune) <-  " hit points " *> weaknesses
+  atk <- skipSpace *> "with an attack that does " *> decimal
+  t <- skipSpace *> attackType
+  initiative <- " damage at initiative " *> decimal
   return Unit {
     n = n, hp = hp,
     atk = atk, atkType = t, initiative = initiative,
@@ -74,27 +64,23 @@ unit = do
 
 -- | Parse possible list of weaknesses and immunities
 --
--- >>> AC.parseOnly weaknesses $ BC.pack "with an attack"
--- Right ([],[])
--- >>> AC.parseOnly weaknesses $ BC.pack "(weak to bludgeoning; immune to slashing, fire)"
--- Right ([Bludgeoning],[Slashing,Fire])
--- >>> AC.parseOnly weaknesses $ BC.pack "(weak to bludgeoning; immune to cold)"
--- Right ([Bludgeoning],[Cold])
-weaknesses :: AC.Parser ([AtkType], [AtkType])
+-- >>> parseTest weaknesses $ pack "with an attack"
+-- Done "with an attack" ([],[])
+-- >>> parseTest weaknesses $ pack "(weak to bludgeoning; immune to slashing, fire)"
+-- Done "" ([Bludgeoning],[Slashing,Fire])
+-- >>> parseTest weaknesses $ pack "(weak to bludgeoning; immune to cold)"
+-- Done "" ([Bludgeoning],[Cold])
+weaknesses :: Parser ([AtkType], [AtkType])
 weaknesses = weaknessList <|> return ([], [])
   where
-    weaknessList :: AC.Parser ([AtkType], [AtkType])
-    weaknessList = do
-      AC.char '('
-      clauses <- AC.many' weaknessClause
-      AC.char ')'
-      return $ combineClauses clauses
-    weaknessClause :: AC.Parser (Bool, [AtkType])
+    weaknessList :: Parser ([AtkType], [AtkType])
+    weaknessList = combineClauses <$> (char '(' *> many' weaknessClause <* char ')')
+    weaknessClause :: Parser (Bool, [AtkType])
     weaknessClause = do
-      isImmune <- (AC.string "immune to " $> True) <|> (AC.string "weak to " $> False)
-      types <- AC.sepBy1 attackType (AC.string ", ")
-      AC.skipWhile (== ';')
-      AC.skipSpace
+      isImmune <- ("immune to " $> True) <|> ("weak to " $> False)
+      types <- sepBy1 attackType ", "
+      skipWhile (== ';')
+      skipSpace
       return (isImmune, types)
     combineClauses :: [(Bool, [AtkType])] -> ([AtkType], [AtkType])
     combineClauses [(True, xs)] = ([], xs)
@@ -105,15 +91,15 @@ weaknesses = weaknessList <|> return ([], [])
 
 -- | Parse an attack type
 --
--- >>> AC.parseOnly attackType $ BC.pack "fire"
--- Right Fire
-attackType :: AC.Parser AtkType
-attackType = AC.choice
-  [ AC.string "cold" $> Cold
-  , AC.string "fire" $> Fire
-  , AC.string "slashing" $> Slashing
-  , AC.string "bludgeoning" $> Bludgeoning
-  , AC.string "radiation" $> Radiation
+-- >>> parseTest attackType $ pack "fire"
+-- Done "" Fire
+attackType :: Parser AtkType
+attackType = choice
+  [ "cold" $> Cold
+  , "fire" $> Fire
+  , "slashing" $> Slashing
+  , "bludgeoning" $> Bludgeoning
+  , "radiation" $> Radiation
   ]
 
 main :: IO ()
@@ -123,4 +109,3 @@ main = do
   print state
   putStrLn $ "day 24 part a: " ++ "NYI"
   putStrLn $ "day 24 part b: " ++ "NYI"
-
