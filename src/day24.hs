@@ -42,7 +42,7 @@ data Group = Group {
 }
 instance Show Group where
   show g = "  " ++ show (n g) ++ " x " ++ show (hp g) ++
-    " (" ++ show (atk g) ++ " " ++ show (atkType g) ++ ", " ++
+    " (" ++ show (atk g) ++ " " ++ show (atkType g) ++ " on " ++ show (initiative g) ++ ", " ++
     show [weak g, immune g] ++ ", " ++ show (side g) ++ ")"
 
 data AtkType = Cold | Fire | Bludgeoning | Slashing | Radiation deriving (Eq, Show)
@@ -121,9 +121,15 @@ runOne log s = do
   when log $ putStrLn ("Selection order: " ++ show allGroupsByPower)
   let targetAssignments :: [(GroupIndex, GroupIndex)] = foldl' (assignTarget s) [] allGroupsByPower
   when log $ putStrLn ("Targets: " ++ show targetAssignments)
+  let sortedAssignments :: [(GroupIndex, GroupIndex)] = sortBy attackerInitiative targetAssignments
+  when log $ putStrLn ("Sorted targets: " ++ show sortedAssignments)
+
   -- in order of atkpower, each group chooses zero/one targets (only one group can target each group)
   -- in order of initiative, attack
   return s
+    where
+      attackerInitiative :: (GroupIndex, GroupIndex) -> (GroupIndex, GroupIndex) -> Ordering
+      attackerInitiative (a1, _) (a2, _) = compare (initiative (s ! a2)) (initiative (s ! a1))
 
 -- Select a target for the group and return the index of the selected group
 assignTarget :: State -> [(GroupIndex, GroupIndex)] -> GroupIndex -> [(GroupIndex, GroupIndex)]
@@ -132,8 +138,10 @@ assignTarget s assigned i
   | damage == 0 = assigned -- all remaing targets are immune
   | otherwise = (i, target) : assigned
   where
-    assignedTargets :: [GroupIndex]= map snd assigned
-    availableTargets :: [GroupIndex] = filter (`notElem` assignedTargets) $ M.keys s
+    assignedTargets :: [GroupIndex] = map snd assigned
+    thisSide :: Side = side (s ! i)
+    enemies :: State = M.filter ((/= thisSide) . side) s
+    availableTargets :: [GroupIndex] = filter (`notElem` assignedTargets) $ M.keys enemies
     availableDamages :: [(GroupIndex, Int)] = map (\t -> (t, potentialDamage (s ! i) (s ! t))) availableTargets
     (target, damage) = maximumBy compareTargets availableDamages
     compareTargets :: (GroupIndex, Int) -> (GroupIndex, Int) -> Ordering
@@ -160,7 +168,7 @@ potentialDamage gAtk gDef = typeFactor (n gAtk * atk gAtk)  (atkType gAtk) (weak
     where
       typeFactor :: Int -> AtkType -> [AtkType] -> [AtkType] -> Int
       typeFactor d a weak immune
-        | a `elem` weak = d `div` 2
+        | a `elem` weak = d * 2
         | a `elem` immune = 0
         | otherwise = d
 
@@ -187,6 +195,7 @@ main = do
   printState state
   putStrLn ""
   runOne True state
+  return ()
   -- putStrLn $ "day 24 part a: " ++ "NYI"
   -- putStrLn $ "day 24 part b: " ++ "NYI"
 
