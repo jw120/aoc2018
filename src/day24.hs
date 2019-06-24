@@ -199,29 +199,56 @@ indicesByEffPower s = sortBy (flip comparePower) $ M.keys s
         u1 = s ! i1
         u2 = s ! i2
 
--- | Apply runOne until only one side remains
+-- | Apply runOne until only one side remains or stalemate
 runAll :: Bool -> State -> IO State
-runAll log s = do
-  let numImm = M.size $ M.filter ((== ImmuneSystem) . side) s
-  let numInf = M.size $ M.filter ((== Infection) . side) s
-  if numImm == 0 || numInf == 0
-    then
-      return s
-    else do
+runAll log s
+  | numSideGroups ImmuneSystem s == 0 || numSideGroups Infection s == 0 = return s
+  | otherwise = do
       s' <- runOne log s
-      runAll log s'
+      if numUnits s' == numUnits s
+        then
+          return s
+        else
+          runAll log s'
+
+-- | Boost until immune wins
+boostUntilWin :: (Bool, Bool) -> State -> IO (Int, State)
+boostUntilWin (log, subLog) s = go 0
+  where
+    go :: Int -> IO (Int, State)
+    go x = do
+      when log $ putStrLn ("Boost: " ++ show x)
+      s' <- runAll subLog (boost x s)
+      if numSideGroups ImmuneSystem s' > 0 && numSideGroups Infection s' == 0
+        then return (x, s')
+        else go (x + 1)
+
+-- | Increase attack power of immune system groups
+--
+boost :: Int -> State -> State
+boost x = M.map boostGroup
+  where
+    boostGroup :: Group -> Group
+    boostGroup g
+      | side g == ImmuneSystem = g { atk = x + atk g}
+      | otherwise = g
+
+-- | number of Units in a state
+numUnits :: State -> Int
+numUnits = sum . map n . M.elems
+
+-- Number of Groups on a side
+numSideGroups :: Side -> State -> Int
+numSideGroups s = M.size . M.filter ((== s) . side)
 
 main :: IO ()
 main = do
   input <- B.readFile "input/day24.txt"
   let state = readState input
-  -- let state = exampleState
-  -- printState state
-  state' <- runAll True state
-  printState state'
-  let finalUnits = sum . map n $ M.elems state'
-  putStrLn $ "day 24 part a: " ++ show finalUnits
-  putStrLn $ "day 24 part b: " ++ "NYI"
+  state' <- runAll False state
+  putStrLn $ "day 24 part a: " ++ show (numUnits state')
+  (_, state'') <- boostUntilWin (False, False) state
+  putStrLn $ "day 24 part b: " ++ show (numUnits state'')
 
 exampleState :: State
 exampleState = readState "\
