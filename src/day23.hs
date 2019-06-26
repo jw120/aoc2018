@@ -43,16 +43,74 @@ readBot s = either (error . withInput) id . AC.parseOnly bot $ s
       return Bot { x = x, y = y, z = z, r = r}
 
 -- | Solve part A, number of bots in range of the strongest bot
+--
+-- >>> partA testA
+-- 7
 partA :: [Bot] -> Int
 partA bots = length $ filter (<= r strongestBot) distances
   where
     strongestBot :: Bot = maximumBy (comparing r) bots
     distances :: [Int] = map (botDistance strongestBot) bots
 
--- | Test for part A from problem statement
+-- Octree region of space bounded by x0 <= x <= x1 etc
+data Oct= Oct
+  { x0 :: Int
+  , x1 :: Int
+  , y0 :: Int
+  , y1 :: Int
+  , z0 :: Int
+  , z1 :: Int
+} deriving Show
+
+-- | Solve part B
 --
--- >>> partA testA
--- 7
+partB :: [Bot] -> Int
+partB = closestOrigin . mostInRange
+
+-- | Closest distance to origin within the octree
+--
+-- >>> closestOrigin $ fullRegion testA
+-- 0
+-- >>> closestOrigin $ Oct {x0 = 1, x1 = 2, y0 = 2, y1 = 3, z0 = 3, z1 = 9}
+-- 6
+closestOrigin :: Oct -> Int
+closestOrigin o = closest (x0 o) (x1 o) + closest (y0 o) (y1 o) + closest (z0 o) (z1 o)
+  where
+    closest :: Int -> Int -> Int
+    closest a b = min (abs a) (abs b)
+
+-- | Octtree that spans the points given
+--
+-- >>> fullRegion testA
+-- Oct {x0 = 0, x1 = 4, y0 = 0, y1 = 5, z0 = 0, z1 = 3}
+fullRegion :: [Bot] -> Oct
+fullRegion bots = Oct
+    { x0 = minimum xs
+    , x1 = maximum xs
+    , y0 = minimum ys
+    , y1 = maximum ys
+    , z0 = minimum zs
+    , z1 = maximum zs
+    }
+    where
+      xs = map x bots
+      ys = map y bots
+      zs = map z bots
+
+-- | Return octtree that is in range of the most points
+--
+mostInRange :: [Bot] -> Oct
+mostInRange = go . fullRegion
+    where
+      go :: Oct -> Oct
+      go = undefined
+
+main = do
+  input <- B.readFile "input/day23.txt"
+  let bots :: [Bot] = map readBot $ BC.lines input
+  putStrLn $ "day 23 part a: " ++ show (partA bots)
+  putStrLn $ "day 23 part b: " ++ "NYI"
+
 testA :: [Bot]
 testA = map readBot
   [ "pos=<0,0,0>, r=4"
@@ -66,9 +124,4 @@ testA = map readBot
   , "pos=<1,3,1>, r=1"
   ]
 
-main :: IO ()
-main = do
-  input <- B.readFile "input/day23.txt"
-  let bots :: [Bot] = map readBot $ BC.lines input
-  putStrLn $ "day 23 part a: " ++ show (partA bots)
-  putStrLn $ "day 23 part b: " ++ "NYI"
+

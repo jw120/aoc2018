@@ -91,9 +91,9 @@ executables:
   #day24:
   #  main: day24.hs
   #  ghc-options: -main-is Day24
-  day25:
-    main: day25.hs
-    ghc-options: -main-is Day25
+  #day25:
+  #  main: day25.hs
+  #  ghc-options: -main-is Day25
 
 tests:
   doctest:
