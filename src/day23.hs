@@ -19,7 +19,10 @@ instance Show Bot where
   show b = "pos=<" ++ show (x b) ++ "," ++ show (y b) ++ "," ++ show (z b) ++ ">, r=" ++ show (r b)
 
 botDistance :: Bot -> Bot -> Int
-botDistance b1 b2 = abs (x b1 - x b2) + abs (y b1 - y b2) + abs (z b1 - z b2)
+botDistance b1 b2 = distance (x b1, y b1, z b1) (x b2, y b2, z b2)
+
+distance :: (Int, Int, Int) -> (Int, Int, Int) -> Int
+distance (a, b, c) (d, e, f) = abs (a - d) + abs (b - e) + abs (c - f)
 
 -- | Read a Bot record from a line of input
 --
@@ -62,6 +65,12 @@ data Oct= Oct
   , z1 :: Int
 } deriving Show
 
+corners :: Oct -> [(Int, Int, Int)]
+corners o = [(x, y, z) | x <- [x0 o, x1 o], y <- [y0 o, y1 o], z <- [z0 o, z1 o]]
+
+unitSize :: Oct -> Bool
+unitSize o = x0 o == x1 o && y0 o == y1 o && z0 o == z1 o
+
 -- | Solve part B
 --
 partB :: [Bot] -> Int
@@ -99,11 +108,42 @@ fullRegion bots = Oct
 
 -- | Return octtree that is in range of the most points
 --
-mostInRange :: [Bot] -> Oct
-mostInRange = go . fullRegion
+mostInRange :: [Bot] -> Int
+mostInRange bots = go $ fullRegion bots
     where
-      go :: Oct -> Oct
-      go = undefined
+      go :: Oct -> Int
+      go oct
+        | unitSize oct = length fullyInside + length overlapping
+        | otherwise = undefined
+        where
+          (fullyInside, fullyOutside, overlapping) = splitOnOct oct bots
+
+-- | Divide
+splitOnOct :: Oct -> [Bot] -> ([Bot], [Bot], [Bot])
+splitOnOct o bots = (filter (isFullyInside o) bots, filter (isFullyOutside o) bots, filter neither bots)
+  where
+    neither :: Bot -> Bool
+    neither b = not (isFullyInside o b) && not (isFullyOutside o b)
+
+-- | Is the bot centre within the Octtree
+isInside :: Oct -> Bot -> Bool
+isInside o b =
+  x0 o <= x b && x b <= x1 o &&
+  y0 o <= y b && y b <= y1 o &&
+  z0 o <= z b && z b <= z1 o
+
+-- | Is the full range of the bot contained within the Octtree
+isFullyInside :: Oct -> Bot -> Bool
+isFullyInside o b =
+  x0 o <= x b - r b && x b + r b <= x1 o &&
+  y0 o <= y b - r b && y b + r b <= y1 o &&
+  z0 o <= z b - r b && z b + r b <= z1 o
+
+-- | Is no part of the range of the bot overlapping the Octtree
+isFullyOutside :: Oct -> Bot -> Bool
+isFullyOutside o b = not (isInside o b) && farAway
+  where
+    farAway = all ((> r b) . distance (x b, y b, z b)) $ corners o
 
 main = do
   input <- B.readFile "input/day23.txt"
