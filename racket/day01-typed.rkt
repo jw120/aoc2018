@@ -1,6 +1,6 @@
 #lang typed/racket
 
-;; Advent of Code 2018 solution - Typed Racket version
+;; Day 1 - Advent of Code 2018 - Typed Racket version
 
 ;;-----------
 ;; Part a
