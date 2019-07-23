@@ -23,30 +23,38 @@
 ;; equal to the number of claims for that square inch
 (define (fold-to-grid claims)
   (foldl add-claim (make-hash) claims))
-(define (add-claim c h)
+(define (add-claim c grid)
   (for*
       ([x (in-range (claim-x c) (+ (claim-x c) (claim-w c)))]
        [y (in-range (claim-y c) (+ (claim-y c) (claim-h c)))])
-    (hash-update! h (cons x y) (lambda (n) (+ n 1)) (lambda () 0)))
-  h)
+    (hash-update! grid (cons x y) (lambda (n) (+ n 1)) (lambda () 0)))
+  grid)
 
-;; Return the number of square inches in the grid that have more than once claim
-(define (count-overlaps h)
-  (length (filter (lambda (i) (> i 1)) (hash-values h))))
+;; Return the number of square inches in the grid that have more than one claim
+(define (count-overlaps grid)
+  (length (filter (lambda (i) (> i 1)) (hash-values grid))))
 
 ;;-----------
 ;; Part b
 
+;; Return the claim that has no squares with overlaps 
+(define (find-unoverlapped-claim claims grid)
+  (define (unoverlapped? c)
+    (for*/and
+      ([x (in-range (claim-x c) (+ (claim-x c) (claim-w c)))]
+       [y (in-range (claim-y c) (+ (claim-y c) (claim-h c)))])
+    (eq? (hash-ref grid (cons x y)) 1)))
+  (match (filter unoverlapped? claims)
+    [(list single-claim) (claim-id single-claim)]
+    [_ (error "Match failed in find-unoverlapped-claim")]))
 
 ;;-----------
 ;; Main
-
-
 
 (define input-lines (file->lines "../input/day03.txt"))
 (define input-claims (map line->claim input-lines))
 (define input-grid (fold-to-grid input-claims))
 (printf "Day 03a: ~a\n" (count-overlaps input-grid))
-(printf "Day 03b: ~a\n" "NYI")
+(printf "Day 03b: ~a\n" (find-unoverlapped-claim input-claims input-grid))
 
 
